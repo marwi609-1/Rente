@@ -2,11 +2,15 @@
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 
+import { mortalityDe } from '@/data/mortality'
 import { simulationYears } from '@/domain/engine/timeline'
+import { fitGompertz } from '@/domain/longevity/gompertzFit'
+import { cohortQx } from '@/domain/longevity/mortalityTable'
 import type { Longevity } from '@/domain/model/types'
 import { defaultLongevity } from '@/domain/model/variants'
 import { usePlanStore } from '@/stores/plan'
 import { longevityLabels } from '@/ui/labels'
+import { formatNumber } from '@/utils/format'
 import NumberField from '../NumberField.vue'
 import SelectField from '../SelectField.vue'
 import TextField from '../TextField.vue'
@@ -23,6 +27,47 @@ const longevityItems = (Object.keys(longevityLabels) as Longevity['type'][]).map
   title: longevityLabels[value],
   value,
 }))
+
+/** Gompertz-Werte, die die Destatis-Kohortentafel für Jahrgang und Geschlecht nachbilden. */
+const fit = computed(() => {
+  const { startYear, currentAge, sex } = household.value
+  const cohort = startYear - currentAge
+  if (
+    !Number.isInteger(currentAge) ||
+    cohort < mortalityDe.firstCohort ||
+    cohort > mortalityDe.lastCohort ||
+    currentAge < mortalityDe.firstAge ||
+    currentAge >= 95
+  ) {
+    return null
+  }
+  return { cohort, sex, ...fitGompertz(cohortQx(mortalityDe, sex, cohort, currentAge), currentAge) }
+})
+
+const fitText = computed(() =>
+  fit.value
+    ? `Für den Jahrgang ${fit.value.cohort} (${fit.value.sex === 'm' ? 'männlich' : 'weiblich'}) bildet m = ${formatNumber(fit.value.modalAge, 1)}, b = ${formatNumber(fit.value.dispersion, 1)} die Destatis-Kohortensterbetafel (Variante 3, hohe Lebenserwartung) ab dem aktuellen Alter nach.`
+    : 'Für diesen Jahrgang deckt die Destatis-Kohortensterbetafel keine Vergleichswerte ab.',
+)
+
+const fitApplied = computed(() => {
+  const l = household.value.longevity
+  return (
+    fit.value !== null &&
+    l.type === 'gompertz' &&
+    l.modalAge === fit.value.modalAge &&
+    l.dispersion === fit.value.dispersion
+  )
+})
+
+function applyFit(): void {
+  if (fit.value === null) return
+  household.value.longevity = {
+    type: 'gompertz',
+    modalAge: fit.value.modalAge,
+    dispersion: fit.value.dispersion,
+  }
+}
 
 const years = computed(() => {
   const n = simulationYears(household.value)
@@ -105,7 +150,7 @@ const years = computed(() => {
           label="Modalalter m"
           unit="years"
           path="household.longevity.modalAge"
-          help="Häufigstes Sterbealter der Gompertz-Verteilung. Für Männer des Jahrgangs 1974 passt etwa 88–89, für Frauen 92–93."
+          :help="`Häufigstes Sterbealter der Gompertz-Verteilung. ${fitText}`"
         />
       </v-col>
       <v-col cols="12" sm="6" md="4">
@@ -119,6 +164,16 @@ const years = computed(() => {
       </v-col>
     </template>
   </v-row>
+  <div
+    v-if="household.longevity.type === 'gompertz' && fit"
+    class="d-flex flex-wrap align-center ga-2 mb-4 text-body-2"
+    data-testid="gompertz-fit"
+  >
+    <span class="text-medium-emphasis">{{ fitText }}</span>
+    <v-btn v-if="!fitApplied" size="small" variant="tonal" color="primary" @click="applyFit">
+      Übernehmen
+    </v-btn>
+  </div>
   <v-alert
     v-if="household.longevity.type === 'table'"
     type="info"

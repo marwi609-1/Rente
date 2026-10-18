@@ -165,6 +165,9 @@ Rechengrößen wachsen mit `paramsGrowth`: `Min_t = 1.318,33 · 12 · (1+g)^t`,
   Sterbealter durch Inversion `D = a + b · ln(1 − ln(u) · e^{(m−a)/b})`, ganzzahlig abgerundet.
 - `table`: `S(a + k) = Π_{j<k} (1 − q_{a+j})` aus der Kohortentafel des Jahrgangs
   `startYear − currentAge`; Sterbealter = erstes `a + k` mit `S(a + k + 1) < u`; ab 100 gilt `q = 1`.
+- Vorschlag für `gompertz` in der Eingabe: m und b per kleinsten Quadraten auf `ln S(x | a)`,
+  `x = a + 1 … 95`, an die Kohortentafel des Jahrgangs und Geschlechts angepasst (Gitter 0,5,
+  dann 0,05; gerundet auf eine Nachkommastelle).
 - `u` stammt aus einem eigenen Strom: `SplitMix32(pathSeed(seed, p) XOR 0x6C8E9CF5)`.
 - Ein Pfad erlebt alle Jahre bis einschließlich des Sterbealters. Sterblichkeitsgewichtet
   erfolgreich ist er, wenn das erste Fehljahr nach dem Sterbealter liegt oder keines auftritt.

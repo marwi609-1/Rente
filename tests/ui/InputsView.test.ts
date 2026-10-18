@@ -125,3 +125,19 @@ describe('Hinweise im Formular', () => {
     expect(wrapper.find('[data-testid="below-minimum"]').exists()).toBe(true)
   })
 })
+
+describe('Langlebigkeit', () => {
+  it('passt den Gompertz-Hinweis an Jahrgang und Geschlecht an und übernimmt die Werte', async () => {
+    const { wrapper, store } = await open('haushalt')
+    await type(wrapper, 'household.currentAge', '53')
+    const hint = () => wrapper.get('[data-testid="gompertz-fit"]').text()
+    expect(hint()).toContain(`Jahrgang ${store.plan.household.startYear - 53} (männlich)`)
+    store.plan.household.sex = 'w'
+    await flushPromises()
+    expect(hint()).toContain('(weiblich)')
+    await wrapper.get('[data-testid="gompertz-fit"] button').trigger('click')
+    const l = store.plan.household.longevity
+    expect(l.type === 'gompertz' && l.modalAge > 90).toBe(true)
+    expect(wrapper.find('[data-testid="gompertz-fit"] button').exists()).toBe(false)
+  })
+})
