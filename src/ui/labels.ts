@@ -31,5 +31,5 @@ export const marketModelLabels: Record<MarketModelType, string> = {
 export const longevityLabels: Record<Longevity['type'], string> = {
   fixed: 'Fester Horizont',
   gompertz: 'Gompertz',
-  table: 'Sterbetafel',
+  table: 'Sterbetafel (Destatis)',
 }

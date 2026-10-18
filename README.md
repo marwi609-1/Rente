@@ -35,10 +35,15 @@ npm run dev
     Student-t, historische Sequenzen, Block-Bootstrap)
   - `strategy/` Zielallokation, Zu- und Abflüsse, Rebalancing
   - `withdrawal/` Entnahmeregeln, Ausgabenprofil, Einmalausgaben
+  - `tax/` Abgeltungsteuer, Vorabpauschale, Verlustverrechnung, Einkommensteuer § 32a,
+    Rentenbesteuerung, Jahresabrechnung mit Günstigerprüfung
+  - `social/` gesetzliche Rente, Kranken- und Pflegeversicherung
+  - `longevity/` fester Horizont, Gompertz, Kohortensterbetafel
   - `engine/` Jahresschritt, Pfad, Monte Carlo, Kennzahlen, Umrechnung real/nominal
 - `src/workers/` Web-Worker-Pool (Comlink) und Ablaufsteuerung mit Fortschritt und Abbruch
-- `src/data/` historische US-Renditen 1871–2025 ([Quellen](docs/DATA_SOURCES.md)),
-  erzeugt mit `scripts/build_historical_us.py`
+- `src/data/` gesetzliche Rechengrößen 2026, historische US-Renditen 1871–2025 und
+  Destatis-Kohortensterbetafeln ([Quellen](docs/DATA_SOURCES.md)); die Datendateien erzeugen
+  `scripts/build_historical_us.py` und `scripts/build_mortality_de.py`
 - `src/stores/` Pinia-Stores (Orchestrierung, keine Rechenlogik)
 - `src/ui/` Ansichten und Komponenten (Vue 3, Vuetify 3)
 - `tests/` spiegelt `src/domain`, dazu Komponententests unter `tests/ui`
@@ -51,7 +56,7 @@ npm run dev
 | ----------- | ------------------------------------------------------------------ | ---------- |
 | M1          | Grundgerüst, Datenmodell, zod-Validierung, deterministische Engine | umgesetzt  |
 | M2          | Zufallszahlen, Marktmodelle, Monte Carlo im Worker                 | umgesetzt¹ |
-| M3          | Steuern, Rente, Krankenversicherung, Langlebigkeit                 | offen      |
+| M3          | Steuern, Rente, Krankenversicherung, Langlebigkeit                 | umgesetzt  |
 | M4          | Strategien und Entnahmeregeln                                      | offen      |
 | M5          | UI, Dashboard, Charts                                              | offen      |
 | M6          | Szenarien, Heatmap, sichere Entnahme, PWR                          | offen      |

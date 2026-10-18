@@ -11,7 +11,7 @@ export function createDefaultPlan(startYear: number): RetirementPlan {
       sex: 'm',
       retirementAge: 57,
       planningHorizonAge: 95,
-      // Näherung, Begründung in docs/ASSUMPTIONS.md
+      // Näherung für einen Mann des Jahrgangs 1974, Abgleich mit Destatis in docs/ASSUMPTIONS.md
       longevity: { type: 'gompertz', modalAge: 88, dispersion: 10 },
       childless: false,
       churchTaxRate: 0,
@@ -41,7 +41,7 @@ export function createDefaultPlan(startYear: number): RetirementPlan {
       enabled: true,
       saverAllowance: 1_000,
       partialExemption: { equity: 0.3, bonds: 0 },
-      // Basiszins 2026 – prüfen (BMF-Schreiben); Verifikation ist Teil von Meilenstein 3
+      // Basiszins 2026: 3,20 % laut BMF-Schreiben vom 13.01.2026 (IV C 1 - S 1980/00230/012/001)
       basiszins: { type: 'fixed', rate: 0.032 },
       costBasisMethod: 'average',
       guenstigerpruefung: true,

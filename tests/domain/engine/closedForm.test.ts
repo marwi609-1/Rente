@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { defaultEngineContext as ctx } from '@/data/engineContext'
 import { runDeterministic } from '@/domain/engine/deterministic'
 import { yearResultToReal } from '@/domain/engine/realNominal'
 import { geometricMean } from '@/domain/market/returns'
@@ -54,7 +55,7 @@ describe('deterministische Engine gegen geschlossene Formeln (σ = 0)', () => {
       p.portfolio.totalValue = 50_000
       p.savings.yearlyNet = 12_000
     })
-    const rows = runDeterministic(plan)
+    const rows = runDeterministic(plan, ctx)
     const r = portfolioFactor(plan)
     const n = 30
     const expected = 50_000 * Math.pow(r, n) + annuityDueFutureValue(12_000, 0, r, n)
@@ -72,7 +73,7 @@ describe('deterministische Engine gegen geschlossene Formeln (σ = 0)', () => {
       p.savings.yearlyNet = 20_000
       p.savings.realGrowth = 0.015
     })
-    const rows = runDeterministic(plan)
+    const rows = runDeterministic(plan, ctx)
     const inflation = 1 + plan.market.inflation.mean
     const realFactor = portfolioFactor(plan) / inflation
     const n = 27
@@ -89,7 +90,7 @@ describe('deterministische Engine gegen geschlossene Formeln (σ = 0)', () => {
       p.spending.netConsumption = 60_000
       p.spending.minimumAcceptableConsumption = 50_000
     })
-    const rows = runDeterministic(plan)
+    const rows = runDeterministic(plan, ctx)
     const { currentAge, retirementAge, planningHorizonAge } = plan.household
     const inflation = 1 + plan.market.inflation.mean
     const realFactor = portfolioFactor(plan) / inflation
@@ -115,7 +116,7 @@ describe('deterministische Engine gegen geschlossene Formeln (σ = 0)', () => {
       p.spending.netConsumption = 70_000
       p.spending.minimumAcceptableConsumption = 50_000
     })
-    const rows = runDeterministic(plan)
+    const rows = runDeterministic(plan, ctx)
     const inflation = 1 + plan.market.inflation.mean
     const realFactor = ((1 + plan.market.equity.mean) * (1 - plan.market.equity.ter)) / inflation
     const atRetirement =
@@ -132,12 +133,13 @@ describe('deterministische Engine gegen geschlossene Formeln (σ = 0)', () => {
       zeroVol(p)
       p.spending.netConsumption = 60_000
     }
-    const plain = runDeterministic(enginePlan(adjust))
+    const plain = runDeterministic(enginePlan(adjust), ctx)
     const aware = runDeterministic(
       enginePlan((p) => {
         adjust(p)
         p.rebalancing.taxAware = true
       }),
+      ctx,
     )
     expect(Math.abs(plain.at(-1)!.total - aware.at(-1)!.total)).toBeLessThan(CENT)
   })
@@ -176,7 +178,7 @@ describe('reale Annuitätenentnahme erschöpft das Depot exakt zum Horizont', ()
     const plan = annuityPlan((p) => {
       p.spending.rule = { type: 'vpw', expectedRealReturn: r }
     })
-    const rows = runDeterministic(plan).map(yearResultToReal)
+    const rows = runDeterministic(plan, ctx).map(yearResultToReal)
     const years = 36
     const expectedWithdrawal = 1_000_000 * vpwFactor(r, years)
 
@@ -196,7 +198,7 @@ describe('reale Annuitätenentnahme erschöpft das Depot exakt zum Horizont', ()
     const plan = annuityPlan((p) => {
       p.spending.netConsumption = withdrawal
     })
-    const rows = runDeterministic(plan).map(yearResultToReal)
+    const rows = runDeterministic(plan, ctx).map(yearResultToReal)
     for (const row of rows) expect(Math.abs(row.netConsumption - withdrawal)).toBeLessThan(CENT)
     expect(Math.abs(rows[rows.length - 1].total)).toBeLessThan(CENT)
   })
@@ -210,7 +212,7 @@ describe('reale Annuitätenentnahme erschöpft das Depot exakt zum Horizont', ()
       p.spending.minimumAcceptableConsumption = 0
       p.spending.rule = { type: 'vpw', expectedRealReturn: r }
     })
-    const rows = runDeterministic(plan).map(yearResultToReal)
+    const rows = runDeterministic(plan, ctx).map(yearResultToReal)
     const retired = rows.filter((row) => row.age >= plan.household.retirementAge)
     const first = retired[0].netConsumption
     expect(first).toBeGreaterThan(0)

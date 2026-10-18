@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { historicalUs } from '@/data/historical'
+import { defaultEngineContext as ctx } from '@/data/engineContext'
 import { runDeterministic } from '@/domain/engine/deterministic'
 import {
   PATH_SERIES,
@@ -13,8 +13,6 @@ import { PERCENTILES, percentileOfSorted, summarize } from '@/domain/engine/summ
 import { yearResultToReal } from '@/domain/engine/realNominal'
 import type { RetirementPlan } from '@/domain/model/types'
 import { enginePlan } from '../../helpers/plans'
-
-const ctx = { historical: historicalUs }
 
 function stochasticPlan(
   type: RetirementPlan['market']['type'],
@@ -69,11 +67,12 @@ describe('Monte-Carlo-Pfade', () => {
   )
 
   it('hängt vom Seed ab', () => {
-    const a = simulateBlock(stochasticPlan('lognormal'), 0, 50)
+    const a = simulateBlock(stochasticPlan('lognormal'), 0, 50, ctx)
     const b = simulateBlock(
       stochasticPlan('lognormal', (p) => (p.simulation.seed = 43)),
       0,
       50,
+      ctx,
     )
     expect(a.series.total).not.toEqual(b.series.total)
   })
@@ -85,6 +84,7 @@ describe('Monte-Carlo-Pfade', () => {
         stochasticPlan('lognormal', (p) => (p.spending.netConsumption = c)),
         0,
         1_000,
+        ctx,
       ),
     )
     // Pfadweise: Wer bei niedrigerem Konsum scheitert, scheitert auch bei höherem.
@@ -116,21 +116,21 @@ describe('Monte-Carlo-Pfade', () => {
 
   it('reproduziert im deterministischen Modell den Referenzpfad', () => {
     const plan = stochasticPlan('deterministic')
-    const block = simulateBlock(plan, 0, 1)
-    const reference = runDeterministic(plan).map(yearResultToReal)
+    const block = simulateBlock(plan, 0, 1, ctx)
+    const reference = runDeterministic(plan, ctx).map(yearResultToReal)
     expect(Array.from(block.series.totalReal)).toEqual(reference.map((r) => r.total))
     expect(Array.from(block.series.consumptionReal)).toEqual(reference.map((r) => r.netConsumption))
   })
 
   it('lehnt Pfadbereiche außerhalb des Laufs ab', () => {
-    expect(() => simulateBlock(stochasticPlan('lognormal'), 900, 1_001)).toThrow(RangeError)
+    expect(() => simulateBlock(stochasticPlan('lognormal'), 900, 1_001, ctx)).toThrow(RangeError)
   })
 
   it('lehnt nicht aneinandergrenzende Blöcke ab', () => {
     const plan = stochasticPlan('lognormal')
-    expect(() => mergeBlocks([simulateBlock(plan, 0, 10), simulateBlock(plan, 11, 20)])).toThrow(
-      RangeError,
-    )
+    expect(() =>
+      mergeBlocks([simulateBlock(plan, 0, 10, ctx), simulateBlock(plan, 11, 20, ctx)]),
+    ).toThrow(RangeError)
   })
 })
 
@@ -162,7 +162,7 @@ describe('Auswertung', () => {
 
   it('berechnet Erfolgsquote, Standardfehler und Fehlbeträge konsistent mit den Pfaden', () => {
     const plan = stochasticPlan('lognormal', (p) => (p.spending.netConsumption = 95_000))
-    const block = simulateBlock(plan, 0, 1_000)
+    const block = simulateBlock(plan, 0, 1_000, ctx)
     const s = summarize(plan, block)
     const failed = Array.from(block.failureYears).filter((f) => f > 0).length
     expect(s.successRate).toBe((1_000 - failed) / 1_000)
@@ -179,7 +179,7 @@ describe('Auswertung', () => {
 
   it('berechnet Vermögen mit 90/95, Erschöpfungsalter, Expected Shortfall und CAGR', () => {
     const plan = stochasticPlan('lognormal', (p) => (p.spending.netConsumption = 95_000))
-    const block = simulateBlock(plan, 0, 1_000)
+    const block = simulateBlock(plan, 0, 1_000, ctx)
     const s = summarize(plan, block)
     const years = block.years
 
@@ -214,7 +214,7 @@ describe('Auswertung', () => {
       p.spending.netConsumption = 10_000
       p.spending.minimumAcceptableConsumption = 10_000
     })
-    const s = summarize(plan, simulateBlock(plan, 0, 1_000))
+    const s = summarize(plan, simulateBlock(plan, 0, 1_000, ctx))
     expect(s.successRate).toBe(1)
     expect(s.successStdError).toBe(0)
     expect(s.earliestDepletionAge).toBeNull()
@@ -228,7 +228,51 @@ describe('Auswertung', () => {
 
   it('lässt „Vermögen mit …“ außerhalb des Horizonts weg', () => {
     const plan = stochasticPlan('lognormal', (p) => (p.household.planningHorizonAge = 92))
-    const s = summarize(plan, simulateBlock(plan, 0, 1_000))
+    const s = summarize(plan, simulateBlock(plan, 0, 1_000, ctx))
     expect(s.wealthAt.map((w) => w.age)).toEqual([90])
+  })
+})
+
+describe('sterblichkeitsgewichtete Sicht', () => {
+  it('ist mindestens so erfolgreich wie der feste Horizont und zählt Fehljahre nur bis zum Tod', () => {
+    const plan = stochasticPlan('lognormal', (p) => (p.spending.netConsumption = 95_000))
+    const block = simulateBlock(plan, 0, 1_000, ctx)
+    const s = summarize(plan, block)
+    expect(s.mortalityWeighted.successRate).toBeGreaterThanOrEqual(s.successRate)
+    expect(s.mortalityWeighted.successRate).toBeLessThan(1)
+    const survived = Array.from(block.deathAge).filter((a, p) => {
+      const first = block.firstFailureAge[p]
+      return Number.isNaN(first) || first > a
+    }).length
+    expect(s.mortalityWeighted.successRate).toBe(survived / 1_000)
+    expect(s.mortalityWeighted.shortfall.failedPaths).toBe(1_000 - survived)
+    expect(s.mortalityWeighted.shortfall.meanFailureYears!).toBeLessThanOrEqual(
+      s.shortfall.meanFailureYears!,
+    )
+  })
+
+  it('verteilt die gezogenen Sterbealter vollständig auf Histogramm und Überlebende', () => {
+    const plan = stochasticPlan('lognormal')
+    const s = summarize(plan, simulateBlock(plan, 0, 1_000, ctx))
+    const counted = s.deathAgeHistogram.reduce((a, b) => a + b.count, 0)
+    expect(counted + s.survivingHorizon).toBe(1_000)
+    expect(s.deathAgeHistogram.every((h) => h.age >= 52 && h.age <= 95)).toBe(true)
+  })
+
+  it('entspricht beim festen Horizont dem festen Horizont', () => {
+    const plan = stochasticPlan('lognormal', (p) => {
+      p.household.longevity = { type: 'fixed' }
+      p.spending.netConsumption = 95_000
+    })
+    const s = summarize(plan, simulateBlock(plan, 0, 1_000, ctx))
+    expect(s.mortalityWeighted.successRate).toBe(s.successRate)
+    expect(s.mortalityWeighted.shortfall).toEqual(s.shortfall)
+    expect(s.survivingHorizon).toBe(1_000)
+  })
+
+  it('zieht Sterbealter unabhängig vom Marktmodell', () => {
+    const a = simulateBlock(stochasticPlan('lognormal'), 0, 200, ctx)
+    const b = simulateBlock(stochasticPlan('block-bootstrap'), 0, 200, ctx)
+    expect(Array.from(a.deathAge)).toEqual(Array.from(b.deathAge))
   })
 })

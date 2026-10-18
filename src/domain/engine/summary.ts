@@ -36,6 +36,39 @@ export interface WealthAtAge {
   p90: number
 }
 
+export interface ShortfallStats {
+  failedPaths: number
+  /** über die gescheiterten Pfade; `null`, wenn kein Pfad scheitert */
+  medianCumulativeReal: number | null
+  p90CumulativeReal: number | null
+  meanFailureYears: number | null
+}
+
+function shortfallStats(cumulative: number[], failureYearSum: number): ShortfallStats {
+  const failed = cumulative.length
+  if (failed === 0) {
+    return {
+      failedPaths: 0,
+      medianCumulativeReal: null,
+      p90CumulativeReal: null,
+      meanFailureYears: null,
+    }
+  }
+  const sorted = Float64Array.from(cumulative).sort()
+  return {
+    failedPaths: failed,
+    medianCumulativeReal: percentileOfSorted(sorted, 0.5),
+    p90CumulativeReal: percentileOfSorted(sorted, 0.9),
+    meanFailureYears: failureYearSum / failed,
+  }
+}
+
+function countBy(values: Iterable<number>): { age: number; count: number }[] {
+  const counts = new Map<number, number>()
+  for (const v of values) counts.set(v, (counts.get(v) ?? 0) + 1)
+  return [...counts].sort((a, b) => a[0] - b[0]).map(([age, count]) => ({ age, count }))
+}
+
 export interface MonteCarloSummary {
   paths: number
   years: number
@@ -55,13 +88,20 @@ export interface MonteCarloSummary {
   /** Anzahl der Pfade je Erschöpfungsalter */
   depletionHistogram: { age: number; count: number }[]
   neverDepleted: number
-  shortfall: {
-    failedPaths: number
-    /** über die gescheiterten Pfade; `null`, wenn kein Pfad scheitert */
-    medianCumulativeReal: number | null
-    p90CumulativeReal: number | null
-    meanFailureYears: number | null
+  shortfall: ShortfallStats
+  /**
+   * Sterblichkeitsgewichtete Sicht: Ein Pfad ist erfolgreich, wenn bis zum gezogenen Sterbealter
+   * (höchstens bis zum Horizont) kein Fehljahr auftritt; Fehlbeträge nur bis dahin.
+   */
+  mortalityWeighted: {
+    successRate: number
+    successStdError: number
+    shortfall: ShortfallStats
   }
+  /** Anzahl der Pfade je gezogenem Sterbealter bis zum Horizont */
+  deathAgeHistogram: { age: number; count: number }[]
+  /** Pfade, deren Sterbealter nach dem Horizont liegt (beim festen Horizont alle) */
+  survivingHorizon: number
   /** Mittelwert des realen Endvermögens der schlechtesten 10 % der Pfade */
   expectedShortfallReal: number
   /** Median der annualisierten Portfoliorendite je Pfad */
@@ -73,7 +113,10 @@ function medianOrNull(values: ArrayLike<number>): number | null {
   return sorted.length > 0 ? percentileOfSorted(sorted, 0.5) : null
 }
 
-/** Verdichtet die Pfade eines Laufs zu Perzentilbändern und Kennzahlen (fester Horizont). */
+/**
+ * Verdichtet die Pfade eines Laufs zu Perzentilbändern und Kennzahlen für den festen Horizont und
+ * für die sterblichkeitsgewichtete Sicht.
+ */
 export function summarize(plan: RetirementPlan, block: PathBlock): MonteCarloSummary {
   const { paths, years } = block
   if (paths === 0) throw new RangeError('Für die Auswertung wird mindestens ein Pfad benötigt.')
@@ -93,9 +136,14 @@ export function summarize(plan: RetirementPlan, block: PathBlock): MonteCarloSum
     bands[name] = band
   }
 
+  const horizonAge = currentAge + years - 1
   let succeeded = 0
   const failedShortfalls: number[] = []
   let failureYearSum = 0
+  let survivedSucceeded = 0
+  const survivedShortfalls: number[] = []
+  let survivedFailureYearSum = 0
+  const deathAges: number[] = []
   for (let p = 0; p < paths; p++) {
     if (block.failureYears[p] === 0) {
       succeeded++
@@ -103,10 +151,29 @@ export function summarize(plan: RetirementPlan, block: PathBlock): MonteCarloSum
       failedShortfalls.push(block.cumulativeShortfallReal[p])
       failureYearSum += block.failureYears[p]
     }
+    const deathAge = block.deathAge[p]
+    if (deathAge <= horizonAge) deathAges.push(deathAge)
+    const firstFailure = block.firstFailureAge[p]
+    if (Number.isNaN(firstFailure) || firstFailure > deathAge) {
+      survivedSucceeded++
+    } else {
+      // Fehlbeträge bis zum Sterbealter
+      const lastYear = Math.min(years - 1, deathAge - currentAge)
+      let sum = 0
+      let count = 0
+      for (let t = 0; t <= lastYear; t++) {
+        const value = block.series.shortfallReal[p * years + t]
+        if (value > 0) {
+          sum += value
+          count++
+        }
+      }
+      survivedShortfalls.push(sum)
+      survivedFailureYearSum += count
+    }
   }
   const successRate = succeeded / paths
-  const failed = failedShortfalls.length
-  const sortedShortfalls = Float64Array.from(failedShortfalls).sort()
+  const mortalitySuccess = survivedSucceeded / paths
 
   const wealthAt: WealthAtAge[] = []
   for (const age of WEALTH_AGES) {
@@ -121,12 +188,7 @@ export function summarize(plan: RetirementPlan, block: PathBlock): MonteCarloSum
     Number.isNaN(a) ? Number.POSITIVE_INFINITY : a,
   ).sort()
   const tenthPath = depletion[Math.max(0, Math.ceil(TAIL_SHARE * paths) - 1)]
-  const histogram = new Map<number, number>()
-  let neverDepleted = 0
-  for (const age of depletion) {
-    if (age === Number.POSITIVE_INFINITY) neverDepleted++
-    else histogram.set(age, (histogram.get(age) ?? 0) + 1)
-  }
+  const depletedAges = depletion.filter((age) => age !== Number.POSITIVE_INFINITY)
 
   const terminal = new Float64Array(paths)
   for (let p = 0; p < paths; p++) terminal[p] = block.series.totalReal[p * years + years - 1]
@@ -146,14 +208,16 @@ export function summarize(plan: RetirementPlan, block: PathBlock): MonteCarloSum
     successStdError: Math.sqrt((successRate * (1 - successRate)) / paths),
     wealthAt,
     earliestDepletionAge: Number.isFinite(tenthPath) ? tenthPath : null,
-    depletionHistogram: [...histogram].map(([age, count]) => ({ age, count })),
-    neverDepleted,
-    shortfall: {
-      failedPaths: failed,
-      medianCumulativeReal: failed > 0 ? percentileOfSorted(sortedShortfalls, 0.5) : null,
-      p90CumulativeReal: failed > 0 ? percentileOfSorted(sortedShortfalls, 0.9) : null,
-      meanFailureYears: failed > 0 ? failureYearSum / failed : null,
+    depletionHistogram: countBy(depletedAges),
+    neverDepleted: paths - depletedAges.length,
+    shortfall: shortfallStats(failedShortfalls, failureYearSum),
+    mortalityWeighted: {
+      successRate: mortalitySuccess,
+      successStdError: Math.sqrt((mortalitySuccess * (1 - mortalitySuccess)) / paths),
+      shortfall: shortfallStats(survivedShortfalls, survivedFailureYearSum),
     },
+    deathAgeHistogram: countBy(deathAges),
+    survivingHorizon: paths - deathAges.length,
     expectedShortfallReal: tailSum / tailCount,
     cagr: { nominal: medianOrNull(block.cagrNominal), real: medianOrNull(block.cagrReal) },
   }

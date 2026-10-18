@@ -8,13 +8,21 @@ export function toNominal(real: number, inflationIndex: number): number {
   return real * inflationIndex
 }
 
-/** Beträge, die zu Jahresbeginn anfallen und mit `inflationIndex` umgerechnet werden. */
+/**
+ * Beträge, die zu Jahresbeginn anfallen bzw. dem ganzen Jahr zugeordnet sind (Rente, Steuern, KV)
+ * und mit `inflationIndex` umgerechnet werden.
+ */
 const START_OF_YEAR_FIELDS = [
   'contributions',
   'grossSales',
   'netConsumption',
   'oneOffSpending',
   'shortfall',
+  'pensionGross',
+  'pensionNet',
+  'capitalTax',
+  'incomeTax',
+  'healthInsurance',
 ] as const satisfies readonly (keyof YearResult)[]
 
 /** Beträge zum Jahresende, die mit `inflationIndexEnd` umgerechnet werden. */
@@ -23,7 +31,9 @@ const END_OF_YEAR_FIELDS = [
   'bonds',
   'cash',
   'total',
+  'taxSales',
   'rebalanceSales',
+  'lossCarryForward',
 ] as const satisfies readonly (keyof YearResult)[]
 
 function convert(row: YearResult, f: (value: number, index: number) => number): YearResult {

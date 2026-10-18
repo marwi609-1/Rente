@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { defaultEngineContext as ctx } from '@/data/engineContext'
 import { runDeterministic } from '@/domain/engine/deterministic'
 import { simulatePath } from '@/domain/engine/path'
 import { phaseForAge, simulationYears } from '@/domain/engine/timeline'
@@ -37,7 +38,7 @@ function flatPlan(adjust: (p: RetirementPlan) => void): RetirementPlan {
 describe('Zeitachse', () => {
   it('simuliert vom aktuellen Alter bis einschließlich Horizont', () => {
     const plan = enginePlan()
-    const rows = runDeterministic(plan)
+    const rows = runDeterministic(plan, ctx)
     expect(rows).toHaveLength(simulationYears(plan.household))
     expect(rows[0]).toMatchObject({ age: 52, year: 2026, inflationIndex: 1 })
     expect(rows.at(-1)).toMatchObject({ age: 95, year: 2069 })
@@ -48,12 +49,12 @@ describe('Zeitachse', () => {
     expect(phaseForAge(plan.household, plan.statePension, 56)).toBe('work')
     expect(phaseForAge(plan.household, plan.statePension, 57)).toBe('bridge')
     expect(phaseForAge(plan.household, plan.statePension, 67)).toBe('pension')
-    const rows = runDeterministic(plan)
+    const rows = runDeterministic(plan, ctx)
     expect(rows.find((r) => r.age === 66)?.phase).toBe('bridge')
   })
 
   it('verkettet den Preisindex von Jahr zu Jahr', () => {
-    const rows = runDeterministic(enginePlan())
+    const rows = runDeterministic(enginePlan(), ctx)
     for (let i = 1; i < rows.length; i++) {
       expect(rows[i].inflationIndex).toBe(rows[i - 1].inflationIndexEnd)
     }
@@ -65,7 +66,7 @@ describe('Jahresschritt', () => {
     const plan = flatPlan((p) => {
       p.savings.realGrowth = 0.1
     })
-    const rows = simulatePath(plan, constantReturns(44, { ...ZERO, inflation: 0.02 }))
+    const rows = simulatePath(plan, constantReturns(44, { ...ZERO, inflation: 0.02 }), ctx)
     expect(rows[0].contributions).toBeCloseTo(30_000, 9)
     expect(rows[2].contributions).toBeCloseTo(30_000 * 1.1 ** 2 * 1.02 ** 2, 8)
     expect(rows[5].contributions).toBe(0)
@@ -78,7 +79,7 @@ describe('Jahresschritt', () => {
         { age: 54, amount: 50_000, label: 'Umbau' },
       ]
     })
-    const rows = simulatePath(plan, constantReturns(44, ZERO))
+    const rows = simulatePath(plan, constantReturns(44, ZERO), ctx)
     expect(rows[1]).toMatchObject({ contributions: 20_000, grossSales: 0, oneOffSpending: 10_000 })
     expect(rows[2]).toMatchObject({ contributions: 0, grossSales: 20_000, oneOffSpending: 50_000 })
     expect(rows[2].total).toBeCloseTo(1_300_000 + 30_000 + 20_000 - 20_000, 6)
@@ -97,7 +98,7 @@ describe('Jahresschritt', () => {
         { age: 72, amount: 5_000, label: 'Geschenk' },
       ]
     })
-    const rows = simulatePath(plan, constantReturns(6, ZERO))
+    const rows = simulatePath(plan, constantReturns(6, ZERO), ctx)
     // 145.000 − 60.000 = 85.000; Jahr 2: 60.000 Konsum + 20.000 Reise; Jahr 3: 5.000 reichen nur
     // für einen Teil des Konsums, die Einmalausgabe entfällt.
     expect(rows.map((r) => r.netConsumption)).toEqual([60_000, 60_000, 5_000, 0, 0, 0])
@@ -119,7 +120,7 @@ describe('Jahresschritt', () => {
         { age: 70, factor: 0.8 },
       ]
     })
-    const rows = simulatePath(plan, constantReturns(21, { ...ZERO, inflation: 0.03 }))
+    const rows = simulatePath(plan, constantReturns(21, { ...ZERO, inflation: 0.03 }), ctx)
     expect(rows[5].netConsumption).toBeCloseTo(50_000 * 0.9 * 1.03 ** 5, 6)
     expect(rows[15].netConsumption).toBeCloseTo(50_000 * 0.8 * 1.03 ** 15, 6)
   })
@@ -136,7 +137,7 @@ describe('Jahresschritt', () => {
       p.market.bonds.ter = 0.02
       p.rebalancing.band = 1
     })
-    const rows = simulatePath(plan, constantReturns(36, ZERO))
+    const rows = simulatePath(plan, constantReturns(36, ZERO), ctx)
     expect(rows[0].equity).toBeCloseTo(500 * 0.99, 10)
     expect(rows[0].bonds).toBeCloseTo(250 * 0.98, 10)
     expect(rows[0].cash).toBe(250)
@@ -157,6 +158,7 @@ describe('Jahresschritt', () => {
     const rows = simulatePath(
       plan,
       constantReturns(3, { equity: 0.1, bonds: 0.04, cash: 0.02, inflation: 0 }),
+      ctx,
     )
     // 0,5 · 10 % + 0,25 · 4 % + 0,25 · 2 %
     expect(rows[0].portfolioReturn).toBeCloseTo(0.065, 12)
@@ -180,7 +182,7 @@ describe('Jahresschritt', () => {
     })
     // Jahr 1: Aktien +10 % → Anteil 52,4 % (innerhalb), Jahr 2: weitere +10 % → 54,8 % (innerhalb),
     // Jahr 3: weitere +10 % → 57,1 % (außerhalb) → Rebalancing.
-    const rows = simulatePath(plan, constantReturns(36, { ...ZERO, equity: 0.1 }))
+    const rows = simulatePath(plan, constantReturns(36, { ...ZERO, equity: 0.1 }), ctx)
     expect(rows[0].rebalanceSales).toBe(0)
     expect(rows[1].rebalanceSales).toBe(0)
     expect(rows[2].rebalanceSales).toBeGreaterThan(0)
@@ -188,7 +190,7 @@ describe('Jahresschritt', () => {
   })
 
   it('lehnt einen zu kurzen Renditepfad ab', () => {
-    expect(() => simulatePath(enginePlan(), constantReturns(10, ZERO))).toThrow(RangeError)
+    expect(() => simulatePath(enginePlan(), constantReturns(10, ZERO), ctx)).toThrow(RangeError)
   })
 })
 
@@ -197,14 +199,14 @@ describe('runDeterministic', () => {
     const plan = enginePlan((p) => {
       p.household.planningHorizonAge = 50
     })
-    expect(() => runDeterministic(plan)).toThrow(PlanValidationError)
+    expect(() => runDeterministic(plan, ctx)).toThrow(PlanValidationError)
   })
 
   it('meldet noch nicht unterstützte Optionen ausdrücklich', () => {
     const glidepath = enginePlan((p) => {
       p.strategy = { type: 'glidepath', points: [{ age: 60, equity: 0.5 }], cash: 0 }
     })
-    expect(() => runDeterministic(glidepath)).toThrow(UnsupportedFeatureError)
+    expect(() => runDeterministic(glidepath, ctx)).toThrow(UnsupportedFeatureError)
     const guytonKlinger = enginePlan((p) => {
       p.spending.rule = {
         type: 'guyton-klinger',
@@ -213,10 +215,10 @@ describe('runDeterministic', () => {
         adjustment: 0.1,
       }
     })
-    expect(() => runDeterministic(guytonKlinger)).toThrow(UnsupportedFeatureError)
+    expect(() => runDeterministic(guytonKlinger, ctx)).toThrow(UnsupportedFeatureError)
   })
 
   it('ist deterministisch', () => {
-    expect(runDeterministic(enginePlan())).toEqual(runDeterministic(enginePlan()))
+    expect(runDeterministic(enginePlan(), ctx)).toEqual(runDeterministic(enginePlan(), ctx))
   })
 })

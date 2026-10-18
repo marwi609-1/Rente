@@ -152,16 +152,115 @@ noch zu Ende.
 
 ## Umfang der Engine
 
-**A19 – Engine-Umfang.** Die Engine rechnet bis einschließlich M2 ohne Steuern, gesetzliche Rente
-und Kranken- und Pflegeversicherung; Pfade sind Bruttopfade. Strategien außer `fixed` und
-Entnahmeregeln außer `fixed-real` und `vpw` werden mit `UnsupportedFeatureError` abgelehnt statt still
-ersetzt. `vpw` ist vorgezogen, weil das Akzeptanzkriterium von M1 sie verlangt.
+**A19 – Engine-Umfang.** Strategien außer `fixed` und Entnahmeregeln außer `fixed-real` und `vpw`
+werden bis M4 mit `UnsupportedFeatureError` abgelehnt statt still ersetzt. `vpw` ist vorgezogen,
+weil das Akzeptanzkriterium von M1 sie verlangt.
 
-## Offene Verifikationen
+## Steuern
 
-**V1 – Gompertz-Parameter des Default-Szenarios** (Modalalter 88, Dispersion 10) stammen aus der
-Spezifikation und sind eine Näherung. Die Plausibilisierung gegen die Kohortensterbetafeln des
-Statistischen Bundesamts erfolgt mit dem Langlebigkeitsmodul (M3).
+**A31 – Jahresabrechnung mit laufender Verrechnung.** Steuern und KV werden für das ganze Jahr
+berechnet; jeder Verkauf und die Vorabpauschale zahlen die Differenz zum bereits Gezahlten (wie die
+Verlustverrechnung einer Bank). Die Vorabpauschale wird zum Jahresende statt im Januar des
+Folgejahres versteuert (Spezifikation).
 
-**V2 – Basiszins 2026** (3,2 % im Default) ist laut Spezifikation gegen das BMF-Schreiben zu prüfen;
-Verifikation vor Abschluss von M3.
+**A32 – Einstand nach Durchschnittsmethode** statt FIFO (Spezifikation, FIFO ist ein Nicht-Ziel).
+Der anfängliche Einstand `costBasisShare` gilt für Aktien- und Anleihe-ETF gleichermaßen.
+
+**A33 – Grundlage der Vorabpauschale.** „Wert zu Jahresbeginn“ ist der Bestand nach den Zahlungen
+zu Jahresbeginn: Käufe im Januar zählen voll, Verkäufe im Januar nicht (§ 18 Abs. 2 InvStG mindert
+nur um volle Monate vor dem Erwerb). Bei `bond-mean` dient `market.bonds.mean` als Basiszins.
+
+**A34 – Kirchensteuer vereinfacht.** Auf die tarifliche Einkommensteuer wird Kirchensteuer als
+`k · ESt` erhoben, ohne Sonderausgabenabzug der Kirchensteuer und ohne Kappung. Bei der
+Abgeltungsteuer gilt die gesetzliche Formel `e / (4 + k)`. Beides erhöht die Steuer eher.
+
+**A35 – Günstigerprüfung nicht in der Erwerbsphase.** Das Erwerbseinkommen ist nicht modelliert
+(die Sparrate ist netto); ohne es lässt sich der persönliche Steuersatz nicht bestimmen. In der
+Erwerbsphase gilt daher stets die Abgeltungsteuer (konservativ).
+
+**A36 – Fortschreibung des Tarifs.** Mit `indexBracketsWithInflation` werden alle Tarifeckwerte und
+die Soli-Freigrenze proportional zum Preisindex fortgeschrieben; Sparer-, Werbungskosten- und
+Sonderausgaben-Pauschbetrag bleiben nominal fest (konservativ). Der Tarif 2026 gilt für das
+Startjahr.
+
+**A37 – Vorsorgeaufwendungen.** Abziehbar sind die vom Haushalt getragenen GKV-/PV-Beiträge
+(Basisabsicherung, ohne Krankengeldanspruch voll). PKV-Beiträge werden nicht abgezogen, weil ihr
+Basisanteil tarifabhängig und unbekannt ist (konservativ; betrifft nur die Günstigerprüfung in der
+Überbrückung).
+
+**A38 – Ausweis der Steuern.** `incomeTax` ist die Steuer auf die Rente allein (mit allen
+abziehbaren KV-Beiträgen), `capitalTax` die Differenz zur Gesamtsteuer; bei Günstigerprüfung ist das
+die tarifliche Mehrsteuer auf die Kapitalerträge.
+
+## Gesetzliche Rente
+
+**A39 – Keine Rente in Jahren mit Erwerbseinkommen.** Liegt der Rentenbeginn vor `retirementAge`,
+wird die Rente erst ab dem Ruhestand gezahlt (Hinzuverdienst nicht modelliert, konservativ).
+Zugangsfaktor und Rentenfreibetrag richten sich trotzdem nach `startAge`.
+
+**A40 – Zuschlag bei späterem Rentenbeginn.** Die Spezifikation nennt nur den Abschlag; § 77 Abs. 2
+Satz 1 Nr. 2 Buchst. b SGB VI sieht für jeden Monat nach der Regelaltersgrenze 0,5 % Zuschlag vor.
+Umgesetzt wie im Gesetz.
+
+**A41 – Rentenfreibetrag** aus dem ersten (im Modell vollen) Rentenjahr. Bei einem Rentenbeginn
+vor dem Startjahr wird der Jahresbetrag mit `adjustmentRate` auf das Beginnjahr zurückgerechnet.
+
+## Kranken- und Pflegeversicherung
+
+**A42 – Satz auf Renten freiwillig Versicherter.** Die Spezifikation setzt für die Rentenphase ohne
+KVdR „wie in der Überbrückung“ den ermäßigten Satz an. § 240 Abs. 2 Satz 5 SGB V erklärt jedoch
+§ 247 Satz 1 für entsprechend anwendbar: Auf die Rente gilt der allgemeine Satz (14,6 %), auf übrige
+Einnahmen der ermäßigte (14,0 %). Umgesetzt wie im Gesetz (höhere Beiträge, konservativ). Die
+Rente wird nach § 238a SGB V zuerst bis zur BBG berücksichtigt.
+
+**A43 – Beitragsgrundlage aus Kapitalerträgen.** Steuerpflichtige Kapitalerträge nach
+Teilfreistellung, Vorabpauschale und Zinsen, nach Verlustverrechnung und – laut Parameter
+`capitalBaseAfterSaverAllowance` (Default ja, Spezifikation) – nach Sparer-Pauschbetrag. Die
+Entnahme von Vermögenssubstanz ist beitragsfrei. Beiträge werden auf das Kalenderjahr bezogen
+(keine Vorläufigkeit mit späterer Korrektur nach dem Steuerbescheid).
+
+**A44 – Krankenversicherung nach der Überbrückung.** Die Rentenphase folgt `kvdrEligible`
+(KVdR oder freiwillige GKV), auch wenn die Überbrückung in der PKV lag. Eine Rückkehr aus der PKV
+in die GKV ist ab 55 in der Regel ausgeschlossen (§ 6 Abs. 3a SGB V); das prüft das Modell nicht.
+
+**A45 – Feste Beitragssätze.** Allgemeiner, ermäßigter und Zusatzbeitragssatz sowie PV-Satz bleiben
+auf dem Stand 2026; nur Mindestbemessung und BBG wachsen mit `paramsGrowth`. Kinderabschläge in der
+PV (ab dem zweiten Kind unter 25) sind nicht modelliert.
+
+**A46 – Leeres Depot.** Reicht das Vermögen nicht für Konsum, Steuern und KV, wird zuerst gekürzt
+was finanziert werden kann; ungedeckte KV-Beiträge werden nicht als Schuld fortgeführt (der Pfad
+ist dann ohnehin gescheitert).
+
+## Langlebigkeit
+
+**A47 – Ganzzahliges Sterbealter.** Das gezogene Sterbealter ist das Alter im Todesjahr; das Jahr
+wird noch voll erlebt (Konsum, Rente). Sterbealter nach dem Horizont werden nur bis zum Horizont
+bewertet.
+
+**A48 – Sterbetafel Variante 3.** Verwendet wird die Variante mit hoher Lebenserwartung
+(konservativ). Abgedeckt sind die Jahrgänge 1926–2008 ab Alter 18; andere Kombinationen werden
+mit einer Fehlermeldung abgelehnt.
+
+**A49 – Ziehung der Sterbealter.** Je Pfad eine Zufallszahl aus einem eigenen Strom, Inversion der
+Überlebensfunktion. Beim deterministischen Marktmodell (ein Pfad) ist die sterblichkeitsgewichtete
+Erfolgsquote daher 0 oder 1.
+
+## Geprüfte Annahmen der Spezifikation
+
+**V1 – Gompertz-Parameter des Default-Szenarios** (Modalalter 88, Dispersion 10). Angepasst an die
+bedingte Überlebenskurve ab 52 Jahren des Jahrgangs 1974 (Destatis-Kohortensterbetafeln, Alter
+53–95, Kleinste Quadrate auf log S):
+
+| Variante   | Geschlecht | m    | b   | häufigstes Sterbealter | P(erlebt 96) |
+| ---------- | ---------- | ---- | --- | ---------------------- | ------------ |
+| 2 (mittel) | männlich   | 87,7 | 9,6 | 89                     | 8,7 %        |
+| 3 (hoch)   | männlich   | 89,1 | 9,6 | 91                     | 11,6 %       |
+| 2 (mittel) | weiblich   | 91,8 | 8,8 | 92                     | 19,3 %       |
+| 3 (hoch)   | weiblich   | 93,1 | 8,7 | 93                     | 23,5 %       |
+
+Der Default (88/10, P(erlebt 96) = 11,1 %) passt zu einem Mann des Jahrgangs 1974 zwischen mittlerer
+und hoher Variante. Für Frauen ist er zu niedrig; dort empfiehlt sich `table` oder etwa m = 92–93,
+b = 9.
+
+**V2 – Basiszins 2026:** 3,20 % bestätigt (BMF-Schreiben vom 13.01.2026). Alle Werte aus Abschnitt 13
+der Spezifikation sind gegen die Primärquellen geprüft und stimmen; Details in `DATA_SOURCES.md`.

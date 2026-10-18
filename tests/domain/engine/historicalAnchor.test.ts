@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { defaultEngineContext as ctx } from '@/data/engineContext'
 import { historicalUs } from '@/data/historical'
 import { monteCarloPathCount, simulateBlock } from '@/domain/engine/monteCarlo'
 import { summarize } from '@/domain/engine/summary'
@@ -35,7 +36,6 @@ function anchorPlan(rate: number): RetirementPlan {
   })
 }
 
-const ctx = { historical: historicalUs }
 const lastYear = historicalUs.rows[historicalUs.rows.length - 1].year
 /** Startjahre 1926 bis zum letzten Jahr mit vollständigem 30-Jahres-Fenster */
 const completeWindows = lastYear - 29 - 1926 + 1

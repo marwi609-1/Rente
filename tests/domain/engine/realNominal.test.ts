@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { defaultEngineContext as ctx } from '@/data/engineContext'
 import { runDeterministic } from '@/domain/engine/deterministic'
 import {
   inOutputUnit,
@@ -39,6 +40,7 @@ describe('Umrechnung real/nominal', () => {
       enginePlan((p) => {
         p.spending.oneOffs = [{ age: 70, amount: 25_000, label: 'Auto' }]
       }),
+      ctx,
     )
     for (const row of rows) {
       const roundTrip = yearResultToNominal(yearResultToReal(row))
@@ -58,13 +60,13 @@ describe('Umrechnung real/nominal', () => {
 
   it('weist Konsum zu Jahresbeginn in heutiger Kaufkraft aus', () => {
     const plan = enginePlan()
-    const real = inOutputUnit(runDeterministic(plan), true)
+    const real = inOutputUnit(runDeterministic(plan, ctx), true)
     const first = real.find((r) => r.age === plan.household.retirementAge)!
     expect(first.netConsumption).toBeCloseTo(plan.spending.netConsumption, 8)
   })
 
   it('deflationiert Bestände mit dem Index zum Jahresende', () => {
-    const rows = runDeterministic(enginePlan())
+    const rows = runDeterministic(enginePlan(), ctx)
     const row = rows[10]
     const real = yearResultToReal(row)
     expect(row.netConsumption).toBeGreaterThan(0)
@@ -73,7 +75,7 @@ describe('Umrechnung real/nominal', () => {
   })
 
   it('lässt nominale Ausgabe unverändert', () => {
-    const rows = runDeterministic(enginePlan())
+    const rows = runDeterministic(enginePlan(), ctx)
     expect(inOutputUnit(rows, false)).toEqual(rows)
   })
 })

@@ -46,4 +46,21 @@ describe('Planübersicht', () => {
     expect(notice.text()).toContain('Wechselkurseffekte')
     expect(notice.text()).toContain('1871–2025')
   })
+
+  it('zeigt Rentenbeginn, Zugangsfaktor, Besteuerungsanteil sowie Steuer- und KV-Einstellungen', async () => {
+    const pinia = createPinia()
+    const wrapper = await mountWithApp(inApp(PlanOverviewView), pinia)
+    const store = usePlanStore(pinia)
+    store.plan.household.startYear = 2026
+    store.plan.statePension.startAge = 64
+    await wrapper.vm.$nextTick()
+    const text = normalize(wrapper.text())
+    // 36 Monate vorzeitig: 89,2 %; Rentenbeginn 2038: Besteuerungsanteil 90,0 %
+    expect(text).toContain('89,2 %')
+    expect(text).toContain('90,0 %')
+    expect(text).toContain('Steuern & Krankenversicherung')
+    expect(text).toContain('GKV freiwillig')
+    expect(text).toContain('KVdR')
+    expect(text).toContain('3,20 %')
+  })
 })

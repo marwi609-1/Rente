@@ -35,3 +35,28 @@ describe('historische US-Daten', () => {
     expect(() => historicalWindow(market, historicalUs)).toThrow(/1871–2025/)
   })
 })
+
+describe('Sterbetafel Destatis', () => {
+  it('deckt die Jahrgänge 1926–2008 im Alter 18–99 ab', async () => {
+    const { mortalityDe, mortalityDeMeta } = await import('@/data/mortality')
+    expect(mortalityDe.firstCohort).toBe(1926)
+    expect(mortalityDe.lastCohort).toBe(2008)
+    expect(mortalityDe.firstAge).toBe(18)
+    expect(mortalityDe.lastAge).toBe(99)
+    expect(mortalityDe.qx.m).toHaveLength(83)
+    expect(mortalityDe.qx.w[0]).toHaveLength(82)
+    expect(mortalityDeMeta.variant).toBe('V3 (hoch)')
+    expect(mortalityDeMeta.sha256).toMatch(/^[0-9a-f]{64}$/)
+  })
+
+  it('hat steigende Sterblichkeit im hohen Alter und eine höhere für Männer', async () => {
+    const { mortalityDe } = await import('@/data/mortality')
+    const cohort1974 = 1974 - mortalityDe.firstCohort
+    const men = mortalityDe.qx.m[cohort1974]
+    const women = mortalityDe.qx.w[cohort1974]
+    for (let age = 60; age < 99; age++) {
+      expect(men[age + 1 - 18]).toBeGreaterThan(men[age - 18])
+    }
+    expect(men[80 - 18]).toBeGreaterThan(women[80 - 18])
+  })
+})

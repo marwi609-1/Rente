@@ -1,4 +1,5 @@
-import { historicalUs } from '@/data/historical'
+import { defaultEngineContext } from '@/data/engineContext'
+import { createLongevityModel } from '@/domain/longevity/longevity'
 import { monteCarloPathCount, type PathBlock } from '@/domain/engine/monteCarlo'
 import { createPathSimulator } from '@/domain/engine/path'
 import type { MonteCarloSummary } from '@/domain/engine/summary'
@@ -43,9 +44,10 @@ export async function runMonteCarlo(
   const { signal, onProgress } = options
   const chunkSize = Math.max(1, Math.floor(options.chunkSize ?? DEFAULT_CHUNK_SIZE))
   const plan = parsePlan(input)
-  // Nicht unterstützte Optionen schon hier melden, nicht erst im Worker.
-  createPathSimulator(plan)
-  const totalPaths = monteCarloPathCount(plan, { historical: historicalUs })
+  // Nicht unterstützte Optionen und fehlende Daten schon hier melden, nicht erst im Worker.
+  createPathSimulator(plan, defaultEngineContext)
+  createLongevityModel(plan.household, plan.simulation.seed, defaultEngineContext.mortality)
+  const totalPaths = monteCarloPathCount(plan, defaultEngineContext)
 
   const chunks: [number, number][] = []
   for (let s = 0; s < totalPaths; s += chunkSize)

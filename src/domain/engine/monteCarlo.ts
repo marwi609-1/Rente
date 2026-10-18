@@ -1,15 +1,23 @@
+import { createLongevityModel } from '../longevity/longevity'
 import { createReturnGenerator, createReturnPath } from '../market/generators'
-import type { HistoricalData } from '../market/historical'
 import type { RetirementPlan } from '../model/types'
+import type { EngineContext } from './context'
 import { createPathSimulator } from './path'
 import { simulationYears } from './timeline'
 
-/** Je Pfad und Jahr gespeicherte Reihen; Beträge real in Euro von heute bzw. nominal (`total`). */
+/**
+ * Je Pfad und Jahr gespeicherte Reihen; Beträge real in Euro von heute bzw. nominal (`total`).
+ * Bestände werden mit dem Index zum Jahresende, Zahlungen mit dem Index zu Jahresbeginn deflationiert.
+ */
 export const PATH_SERIES = [
   'total',
   'totalReal',
   'consumptionReal',
   'shortfallReal',
+  'pensionNetReal',
+  'capitalTaxReal',
+  'incomeTaxReal',
+  'healthInsuranceReal',
   'equityShare',
   'bondShare',
   'cashShare',
@@ -34,6 +42,10 @@ export interface PathBlock {
   depletionAge: Float64Array
   /** Anzahl der Fehljahre bis zum Horizont */
   failureYears: Float64Array
+  /** Alter im ersten Fehljahr; NaN, wenn keines */
+  firstFailureAge: Float64Array
+  /** gezogenes Sterbealter (Alter im Todesjahr); +∞ beim festen Horizont */
+  deathAge: Float64Array
   /** Summe der realen Fehlbeträge bis zum Horizont */
   cumulativeShortfallReal: Float64Array
   /** annualisierte Portfoliorendite über die Jahre mit investiertem Kapital; NaN, wenn keines */
@@ -41,13 +53,8 @@ export interface PathBlock {
   cagrReal: Float64Array
 }
 
-export interface MonteCarloContext {
-  /** nur für die historischen Marktmodelle erforderlich */
-  historical?: HistoricalData
-}
-
 /** Anzahl der Pfade eines Laufs (bei `historical-sequence` die Zahl der Startjahre). */
-export function monteCarloPathCount(plan: RetirementPlan, ctx: MonteCarloContext = {}): number {
+export function monteCarloPathCount(plan: RetirementPlan, ctx: EngineContext): number {
   return createReturnGenerator({
     market: plan.market,
     simulation: plan.simulation,
@@ -66,6 +73,8 @@ function emptyBlock(start: number, paths: number, years: number): PathBlock {
     series,
     depletionAge: new Float64Array(paths),
     failureYears: new Float64Array(paths),
+    firstFailureAge: new Float64Array(paths),
+    deathAge: new Float64Array(paths),
     cumulativeShortfallReal: new Float64Array(paths),
     cagrNominal: new Float64Array(paths),
     cagrReal: new Float64Array(paths),
@@ -77,7 +86,7 @@ export function simulateBlock(
   plan: RetirementPlan,
   start: number,
   end: number,
-  ctx: MonteCarloContext = {},
+  ctx: EngineContext,
 ): PathBlock {
   const years = simulationYears(plan.household)
   const generator = createReturnGenerator({
@@ -89,7 +98,8 @@ export function simulateBlock(
   if (!(start >= 0 && end <= generator.paths && start <= end)) {
     throw new RangeError(`Pfadbereich ${start}–${end} liegt außerhalb von 0–${generator.paths}.`)
   }
-  const simulate = createPathSimulator(plan)
+  const simulate = createPathSimulator(plan, ctx)
+  const longevity = createLongevityModel(plan.household, plan.simulation.seed, ctx.mortality)
   const block = emptyBlock(start, end - start, years)
   const { series } = block
   const returns = createReturnPath(years)
@@ -100,6 +110,7 @@ export function simulateBlock(
     let t = 0
     let depletionAge = NaN
     let failureYears = 0
+    let firstFailureAge = NaN
     let shortfallReal = 0
     let logNominal = 0
     let logReal = 0
@@ -110,11 +121,16 @@ export function simulateBlock(
       series.totalReal[i] = row.total / row.inflationIndexEnd
       series.consumptionReal[i] = row.netConsumption / row.inflationIndex
       series.shortfallReal[i] = row.shortfall / row.inflationIndex
+      series.pensionNetReal[i] = row.pensionNet / row.inflationIndex
+      series.capitalTaxReal[i] = row.capitalTax / row.inflationIndex
+      series.incomeTaxReal[i] = row.incomeTax / row.inflationIndex
+      series.healthInsuranceReal[i] = row.healthInsurance / row.inflationIndex
       series.equityShare[i] = row.equityShare
       series.bondShare[i] = row.bondShare
       series.cashShare[i] = row.cashShare
       if (Number.isNaN(depletionAge) && row.total < DEPLETION_TOLERANCE) depletionAge = row.age
       if (row.shortfall > 0) {
+        if (failureYears === 0) firstFailureAge = row.age
         failureYears++
         shortfallReal += row.shortfall / row.inflationIndex
       }
@@ -128,6 +144,8 @@ export function simulateBlock(
     })
     block.depletionAge[p] = depletionAge
     block.failureYears[p] = failureYears
+    block.firstFailureAge[p] = firstFailureAge
+    block.deathAge[p] = longevity.deathAge(start + p)
     block.cumulativeShortfallReal[p] = shortfallReal
     block.cagrNominal[p] = investedYears > 0 ? Math.expm1(logNominal / investedYears) : NaN
     block.cagrReal[p] = investedYears > 0 ? Math.expm1(logReal / investedYears) : NaN
@@ -154,6 +172,8 @@ export function mergeBlocks(blocks: readonly PathBlock[]): PathBlock {
     for (const name of PATH_SERIES) merged.series[name].set(b.series[name], offset * years)
     merged.depletionAge.set(b.depletionAge, offset)
     merged.failureYears.set(b.failureYears, offset)
+    merged.firstFailureAge.set(b.firstFailureAge, offset)
+    merged.deathAge.set(b.deathAge, offset)
     merged.cumulativeShortfallReal.set(b.cumulativeShortfallReal, offset)
     merged.cagrNominal.set(b.cagrNominal, offset)
     merged.cagrReal.set(b.cagrReal, offset)
@@ -168,6 +188,8 @@ export function blockBuffers(block: PathBlock): ArrayBuffer[] {
     ...PATH_SERIES.map((name) => block.series[name].buffer as ArrayBuffer),
     block.depletionAge.buffer as ArrayBuffer,
     block.failureYears.buffer as ArrayBuffer,
+    block.firstFailureAge.buffer as ArrayBuffer,
+    block.deathAge.buffer as ArrayBuffer,
     block.cumulativeShortfallReal.buffer as ArrayBuffer,
     block.cagrNominal.buffer as ArrayBuffer,
     block.cagrReal.buffer as ArrayBuffer,

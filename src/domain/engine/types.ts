@@ -18,16 +18,33 @@ export interface YearResult {
   total: EUR
   /** zu Jahresbeginn investierte Sparrate (nach Verrechnung mit Einmalausgaben) */
   contributions: EUR
-  /** Verkäufe zu Jahresbeginn zur Finanzierung von Konsum und Einmalausgaben */
+  /** Verkäufe zu Jahresbeginn zur Finanzierung von Konsum, Einmalausgaben, Steuern und KV */
   grossSales: EUR
+  /** Verkäufe zum Jahresende zur Zahlung von Steuern auf Vorabpauschale und Zinsen */
+  taxSales: EUR
   /** Verkaufsvolumen beim Rebalancing zum Jahresende */
   rebalanceSales: EUR
-  /** tatsächlich finanzierter laufender Netto-Konsum ohne Einmalausgaben; in der Erwerbsphase 0 */
+  /**
+   * tatsächlich finanzierter laufender Netto-Konsum ohne Einmalausgaben, einschließlich des aus der
+   * Netto-Rente bestrittenen Teils; in der Erwerbsphase 0
+   */
   netConsumption: EUR
   /** tatsächlich finanzierte Einmalausgaben */
   oneOffSpending: EUR
   /** Fehlbetrag gegenüber dem Mindestkonsum; > 0 kennzeichnet ein Fehljahr */
   shortfall: EUR
+  /** gesetzliche Rente brutto */
+  pensionGross: EUR
+  /** Rente nach Einkommensteuer und KV/PV-Anteil */
+  pensionNet: EUR
+  /** Steuer auf Kapitalerträge des Jahres (Abgeltungsteuer bzw. Mehrsteuer bei Günstigerprüfung) */
+  capitalTax: EUR
+  /** Einkommensteuer mit Soli und Kirchensteuer auf die Rente */
+  incomeTax: EUR
+  /** Beiträge zu KV/PV bzw. PKV nach Zuschuss der Rentenversicherung */
+  healthInsurance: EUR
+  /** Verlustvortrag zum Jahresende */
+  lossCarryForward: EUR
   /**
    * Nominale Rendite des nach den Zahlungen zu Jahresbeginn investierten Kapitals (nach TER);
    * `null`, wenn kein Kapital investiert war

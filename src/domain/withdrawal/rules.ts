@@ -1,5 +1,5 @@
 import { UnsupportedFeatureError } from '../model/errors'
-import type { Household, Rate, Spending } from '../model/types'
+import type { Household, Rate, Spending, WithdrawalRule } from '../model/types'
 
 export interface WithdrawalContext {
   age: number
@@ -22,6 +22,15 @@ export function vpwFactor(r: Rate, n: number): number {
   if (!(r > -1)) throw new RangeError('Die reale Rendite muss größer als −100 % sein.')
   if (Math.abs(r) < 1e-12) return 1 / n
   return r / (-Math.expm1(-n * Math.log1p(r)) * (1 + r))
+}
+
+/**
+ * Bei `fixed-real` ist der Betrag der Regel der gesamte Netto-Konsum; das Depot deckt die Lücke zur
+ * Netto-Rente. Bei allen anderen Regeln ist er der depotfinanzierte Konsum, die Netto-Rente kommt
+ * hinzu (Spezifikation 9.2).
+ */
+export function ruleSetsTotalConsumption(rule: WithdrawalRule): boolean {
+  return rule.type === 'fixed-real'
 }
 
 /** Verbleibende Entnahmejahre einschließlich des laufenden; das Horizontjahr zählt mit. */

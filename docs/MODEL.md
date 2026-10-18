@@ -1,7 +1,8 @@
 # Modell und Formeln
 
-Stand: Meilenstein 2 (deterministische Engine, Zufallszahlen, Marktmodelle, Monte Carlo). Spätere
-Meilensteine ergänzen Steuern, Rente, Krankenversicherung, Langlebigkeit und weitere Strategien.
+Stand: Meilenstein 3 (deterministische Engine, Zufallszahlen, Marktmodelle, Monte Carlo, Steuern,
+gesetzliche Rente, Kranken- und Pflegeversicherung, Langlebigkeit). Weitere Strategien und
+Entnahmeregeln folgen mit Meilenstein 4. Rechtsstand und Quellen: `DATA_SOURCES.md`.
 
 ## Zeitachse und Einheiten
 
@@ -48,35 +49,105 @@ r_netto = (1 + r) · (1 − TER) − 1
 
 Die TER gilt für Aktien- und Anleihe-ETFs, nicht für Cash.
 
-## Jahresschritt (Meilenstein 1)
+## Jahresschritt
 
-Abgebildet sind Zielallokation, Sparrate, Konsum, Einmalausgaben, Renditen, Rebalancing und die
-Erfolgsprüfung. Steuern, gesetzliche Rente sowie Kranken- und Pflegeversicherung sind noch nicht Teil
-des Jahresschritts; der Pfad ist in M1 ein Bruttopfad.
-
-Für jedes Jahr `t` mit Bestand `h = (h_A, h_B, h_C)` (Aktien, Anleihen, Cash, nominal) und
-Zielallokation `w = (w_A, w_B, w_C)`:
+Für jedes Jahr `t` mit Bestand `h = (h_A, h_B, h_C)` (Aktien-ETF, Anleihe-ETF, Cash, nominal),
+Einstand `B = (B_A, B_B)` und Zielallokation `w`:
 
 1. **Phase** nach Alter (siehe oben). Ruhestand: `a_t ≥ retirementAge`.
 2. **Bedarf zu Jahresbeginn** (nominal):
-   - Konsum `K_t = Regel_t · f(a_t)` im Ruhestand, sonst 0. `f` ist das Ausgabenprofil.
-   - Einmalausgaben `E_t = Σ amount(a_t) · I_t`.
-   - Sparrate (nur Erwerbsphase) `S_t = yearlyNet · (1 + realGrowth)^t · I_t`.
-3. **Saldierung**: Bedarf `B_t = K_t + E_t`.
-   - `S_t ≥ B_t`: `S_t − B_t` wird gemäß Zielallokation investiert.
-   - sonst: Verkauf von `B_t − S_t` (höchstens der gesamte Bestand). Verfügbar sind `S_t + Erlös`.
-   - Laufender Konsum hat Vorrang: `K̂_t = min(K_t, verfügbar)`,
-     `Ê_t = min(E_t, verfügbar − K̂_t)`.
-4. **Renditen**: `h_k ← h_k · (1 + r_netto,k,t)`. Portfoliorendite des Jahres
-   `r_p,t = Σh_nach / Σh_vor − 1` auf das nach den Zahlungen investierte Kapital (`null`, wenn
-   keines investiert war).
-5. **Rebalancing**: Ist `max_k |h_k / Σh − w_k| ≥ band`, wird vollständig auf `w · Σh` umgeschichtet.
-6. **Preisindex**: `I_{t+1} = I_t · (1 + π_t)`.
-7. **Erfolgsprüfung** (nur Ruhestand): Fehlbetrag
-   `F_t = max(0, minimumAcceptableConsumption · I_t − K̂_t)`; Beträge unter 1 Cent gelten als 0.
-   `F_t > 0` kennzeichnet ein Fehljahr. Ein leeres Depot läuft mit Kapital 0 weiter.
+   - Regelbetrag `K_t = Regel_t · f(a_t)` im Ruhestand, sonst 0 (`f` = Ausgabenprofil).
+     Bei `fixed-real` ist `K_t` der gesamte Netto-Konsum; bei den übrigen Regeln ist `K_t` der
+     depotfinanzierte Konsum, der Gesamtkonsum ist `K_t + Netto-Rente`.
+   - Einmalausgaben `E_t = Σ amount(a_t) · I_t`, Sparrate (nur Erwerbsphase)
+     `S_t = yearlyNet · (1 + realGrowth)^t · I_t`.
+3. **Einkommen:** Rente brutto `R_t` (siehe unten); Netto-Rente `R_t − ESt_t − KV_Rente,t`.
+4. **Brutto-Hochrechnung:** Verkauf `V` (Aufteilung nach Zielallokation bzw. steueroptimiert) so,
+   dass `S_t + R_t + V = Konsum + E_t + G_t(V)`, wobei `G_t(V)` die bis dahin fälligen Steuern und
+   KV-Beiträge des Jahres sind (Jahresabrechnung unten, mit den realisierten Gewinnen aus `V`).
+   Gelöst per Fixpunktiteration `V ← clamp(Konsum + E_t + G_t(V) − S_t − R_t, 0, Σh)` bis
+   `|ΔV| < 1 Cent`; nach 30 Iterationen wird eine Restabweichung bis 1 € akzeptiert, sonst Fehler.
+   Reicht das Depot nicht, hat laufender Konsum Vorrang vor Einmalausgaben.
+5. **Überschuss** (Sparrate, Rente über Bedarf) wird gemäß Zielallokation investiert; der Einstand
+   steigt um den Kaufbetrag.
+6. **Renditen** nach TER.
+7. **Zum Jahresende:** Vorabpauschale je Fonds und Cash-Zinsen gehen in die Kapitalerträge ein, die
+   Vorabpauschale erhöht den Einstand. Die Mehrsteuer (bzw. Erstattung) aus der Jahresabrechnung wird
+   aus Cash bezahlt, reicht Cash nicht, durch einen hochgerechneten Verkauf.
+8. **Rebalancing** bei Erreichen des Bands auf `w · (Σh − ΔG)`; `ΔG` sind die Steuern und
+   KV-Beiträge auf die Rebalancing-Gewinne (Fixpunktiteration).
+9. **Fortschreibung** von Verlustvortrag, Einstand und Preisindex `I_{t+1} = I_t · (1 + π_t)`.
+10. **Erfolgsprüfung** (nur Ruhestand): `F_t = max(0, minimumAcceptableConsumption · I_t − K̂_t)` mit
+    dem finanzierten Gesamtkonsum `K̂_t`; unter 1 Cent gilt 0. Ein leeres Depot läuft weiter.
 
-Das Startdepot `totalValue` wird gemäß Zielallokation im Startalter aufgeteilt.
+Startdepot: `totalValue` nach Zielallokation im Startalter; Einstand `costBasisShare · Kurswert` je
+Fonds; Verlustvortrag `lossCarryForward`.
+
+## Jahresabrechnung: Steuern und Krankenversicherung
+
+Die Abrechnung betrachtet stets das ganze Jahr: `G_t(x)` ist die Summe aus Steuern und KV zu den
+bis dahin angefallenen Kapitalerträgen `x`. Jedes weitere Ereignis (Verkauf, Vorabpauschale,
+Rebalancing) zahlt die Differenz zum bereits Gezahlten bzw. erhält sie erstattet – wie die laufende
+Verlustverrechnung einer Bank.
+
+### Kapitalerträge
+
+- Gewinn eines Fondsverkaufs `V_k`: `V_k · (1 − B_k / h_k) · (1 − TF_k)` (Durchschnittsmethode,
+  Teilfreistellung TF Aktien 30 %, Anleihen 0 %); Verluste negativ. Der Einstand sinkt um
+  `V_k · B_k / h_k`.
+- Vorabpauschale je Fonds: `VP = min(h_nach Flüssen · Basiszins · 0,7; max(0, Wertzuwachs))`,
+  0 bei Basiszins ≤ 0; steuerpflichtig `VP · (1 − TF)`; Einstand `+ VP`. Basiszins fest oder
+  `market.bonds.mean` (`bond-mean`).
+- Zinsen `h_C · r_C` voll.
+- Summe `x` des Jahres; Verrechnung: `nach Verlust = max(0, x − LV)`, `LV' = LV − min(LV, x)` bzw.
+  `LV' = LV − x` bei `x < 0`; steuerpflichtig `x⁺ = max(0, nach Verlust − Sparer-Pauschbetrag)`.
+- Abgeltungsteuer: `x⁺ · 25 % / (1 + 25 % · k) · (1 + 5,5 % + k)` mit Kirchensteuersatz `k`.
+
+### Einkommensteuer auf die Rente
+
+- Einkünfte: `R − Rentenfreibetrag − min(102 €, R − Rentenfreibetrag)`.
+- zvE `= max(0, Einkünfte − 36 € − abziehbare KV/PV)`; Tarif § 32a EStG (zvE und Steuer auf volle
+  Euro abgerundet), Soli mit Freigrenze und Milderungszone, Kirchensteuer `k · ESt`.
+- Fortschreibung der Eckwerte (optional): `Steuer_t(zvE) = I_t · Steuer₂₀₂₆(zvE / I_t)`; die
+  Soli-Freigrenze wird ebenso fortgeschrieben, Pauschbeträge nicht.
+- Günstigerprüfung (außerhalb der Erwerbsphase): `min(ESt(zvE) + Abgeltungsteuer; ESt(zvE + x⁺))`.
+- Ausweis: `incomeTax` = Steuer auf die Rente allein; `capitalTax` = Gesamtsteuer − `incomeTax`.
+
+### Gesetzliche Rente
+
+- Anspruch bei Ausstieg (heutige Werte): `current + (projected − current) ·
+min(1, (retirementAge − currentAge) / (regularAge − currentAge))`.
+- Zugangsfaktor `1 − 0,003 · Monate vorzeitig` bzw. `1 + 0,005 · Monate später`.
+- `R_t = Anspruch · Zugangsfaktor · 12 · (1 + adjustmentRate)^t` ab `startAge`, nicht in Jahren mit
+  Erwerbseinkommen.
+- Rentenfreibetrag `(1 − Besteuerungsanteil(Jahr des Rentenbeginns)) · R` im ersten Rentenjahr,
+  danach nominal fest; Besteuerungsanteil nach Tabelle § 22 EStG.
+
+### Kranken- und Pflegeversicherung
+
+Rechengrößen wachsen mit `paramsGrowth`: `Min_t = 1.318,33 · 12 · (1+g)^t`,
+`BBG_t = 5.812,50 · 12 · (1+g)^t`. PV-Satz `p = 3,6 %` (+0,6 Punkte kinderlos).
+
+- Erwerbsphase: nicht modelliert.
+- Überbrückung, GKV freiwillig: `clamp(x_KV, Min_t, BBG_t) · (14,0 % + ZB + p)` mit
+  `x_KV = x⁺` (bzw. Erträge nach Verlust, Parameter `capitalBaseAfterSaverAllowance`).
+- Überbrückung, PKV: `monthlyPremium · 12 · (1 + premiumGrowth)^t`.
+- Rente mit KVdR: `min(R, BBG) · ((14,6 % + ZB)/2 + p)`.
+- Rente ohne KVdR: Rente zuerst bis zur BBG `R̃ = min(R, BBG)`, dann Kapitalerträge
+  `X = min(x_KV, BBG − R̃)`, Aufstockung auf die Mindestgrundlage `A = max(0, Min − R̃ − X)`:
+  `R̃ · (14,6 % + ZB) + (X + A) · (14,0 % + ZB) + (R̃ + X + A) · p − R̃ · (14,6 % + ZB)/2`.
+- Abziehbar als Basis-Vorsorgeaufwendungen: GKV-Beiträge voll, PKV nicht (Annahme).
+
+## Langlebigkeit
+
+- `fixed`: kein Sterbealter, die sterblichkeitsgewichtete Sicht entspricht dem festen Horizont.
+- `gompertz` (Modalalter `m`, Dispersion `b`): `S(x | a) = exp(e^{(a−m)/b} · (1 − e^{(x−a)/b}))`;
+  Sterbealter durch Inversion `D = a + b · ln(1 − ln(u) · e^{(m−a)/b})`, ganzzahlig abgerundet.
+- `table`: `S(a + k) = Π_{j<k} (1 − q_{a+j})` aus der Kohortentafel des Jahrgangs
+  `startYear − currentAge`; Sterbealter = erstes `a + k` mit `S(a + k + 1) < u`; ab 100 gilt `q = 1`.
+- `u` stammt aus einem eigenen Strom: `SplitMix32(pathSeed(seed, p) XOR 0x6C8E9CF5)`.
+- Ein Pfad erlebt alle Jahre bis einschließlich des Sterbealters. Sterblichkeitsgewichtet
+  erfolgreich ist er, wenn das erste Fehljahr nach dem Sterbealter liegt oder keines auftritt.
 
 ## Zu- und Abflüsse
 
@@ -118,10 +189,11 @@ letzten konstant, leeres Profil `f ≡ 1`.
 
 Jede Jahreszeile ist nominal. Für die reale Darstellung (Euro von heute) werden
 
-- Zahlungen zu Jahresbeginn (`contributions`, `grossSales`, `netConsumption`, `oneOffSpending`,
-  `shortfall`) durch `I_t` (`inflationIndex`),
-- Bestände und Rebalancing zum Jahresende (`equity`, `bonds`, `cash`, `total`, `rebalanceSales`)
-  durch `I_{t+1}` (`inflationIndexEnd`)
+- Zahlungen zu Jahresbeginn und dem Jahr zugeordnete Beträge (`contributions`, `grossSales`,
+  `netConsumption`, `oneOffSpending`, `shortfall`, `pensionGross`, `pensionNet`, `capitalTax`,
+  `incomeTax`, `healthInsurance`) durch `I_t` (`inflationIndex`),
+- Bestände und Vorgänge zum Jahresende (`equity`, `bonds`, `cash`, `total`, `taxSales`,
+  `rebalanceSales`, `lossCarryForward`) durch `I_{t+1}` (`inflationIndexEnd`)
 
 geteilt. Die Rückrechnung multipliziert mit denselben Indizes. `portfolioReturn` ist eine nominale
 Rate und wird nicht umgerechnet.
@@ -166,8 +238,9 @@ Die Pfade werden in Paketen (Standard 250 Pfade) auf einen Pool von Web Workern 
 (`min(4, Kerne − 1)`). Jeder Pfad hängt nur von Seed und Pfadindex ab, das Ergebnis ist daher
 bitgleich unabhängig von Paketgröße und Worker-Zahl. Je Pfad und Jahr gespeichert werden
 (`Float64Array`, Index `p · N + t`): `total` (nominal), `totalReal = total / I_{t+1}`,
-`consumptionReal = K̂_t / I_t`, `shortfallReal = F_t / I_t` sowie die Anteile von Aktien, Anleihen
-und Cash zum Jahresende.
+`consumptionReal = K̂_t / I_t`, `shortfallReal = F_t / I_t`, Netto-Rente, Kapitalertragsteuer,
+Einkommensteuer und KV/PV (jeweils `/ I_t`) sowie die Anteile von Aktien, Anleihen und Cash zum
+Jahresende; je Pfad außerdem Alter des ersten Fehljahres und Sterbealter.
 
 - **Perzentile** 5, 10, 25, 50, 75, 90, 95 je Jahr und Reihe, lineare Interpolation zwischen den
   Ordnungsstatistiken (Hyndman/Fan Typ 7): `h = (N − 1) p`, `x_⌊h⌋ + (h − ⌊h⌋)(x_⌊h⌋+1 − x_⌊h⌋)`.
@@ -181,6 +254,8 @@ und Cash zum Jahresende.
 - **Fehlbetrag:** über die gescheiterten Pfade Median und P90 der Summe der realen Fehlbeträge sowie
   die mittlere Zahl der Fehljahre.
 - **Expected Shortfall:** Mittel des realen Endvermögens der `⌈0,1 · N⌉` schlechtesten Pfade.
+- **Sterblichkeitsgewichtet:** Erfolgsquote und Standardfehler wie oben, Fehlbeträge nur bis zum
+  Sterbealter; dazu die Verteilung der Sterbealter bis zum Horizont.
 - **Portfolio-CAGR:** je Pfad `exp(Σ ln(1 + r_p,t) / m) − 1` über die `m` Jahre mit investiertem
   Kapital, real mit `ln(1 + r_p,t) − ln(1 + π_t)`; ausgewiesen wird der Median über die Pfade.
 

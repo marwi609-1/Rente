@@ -8,11 +8,15 @@ import {
   mdiChartBellCurve,
   mdiChartDonut,
   mdiPiggyBank,
+  mdiScaleBalance,
 } from '@mdi/js'
 
 import { historicalUsMeta } from '@/data/historical'
+import { paramsDe2026 } from '@/data/params-de-2026'
 import { geometricMean } from '@/domain/market/returns'
 import type { RetirementPlan, StrategyConfig } from '@/domain/model/types'
+import { accessFactor, claimAtExit } from '@/domain/social/pension'
+import { taxableShare } from '@/domain/tax/pensionTax'
 import { usePlanStore } from '@/stores/plan'
 import SummaryCard from '@/ui/components/SummaryCard.vue'
 import {
@@ -65,6 +69,7 @@ function strategyItems(strategy: StrategyConfig) {
 
 function cards(p: RetirementPlan) {
   const { household: h, market: m } = p
+  const factor = accessFactor(p.statePension, paramsDe2026)
   const longevity =
     h.longevity.type === 'gompertz'
       ? `Gompertz (m\u00a0=\u00a0${h.longevity.modalAge}, b\u00a0=\u00a0${h.longevity.dispersion})`
@@ -117,6 +122,45 @@ function cards(p: RetirementPlan) {
         },
         { label: 'Rentenbeginn', value: `${p.statePension.startAge}` },
         { label: 'Regelaltersgrenze', value: `${p.statePension.regularAge}` },
+        { label: 'Zugangsfaktor', value: formatPercent(factor) },
+        {
+          label: 'Rente bei Beginn',
+          value: `${formatEuro(claimAtExit(h, p.statePension) * factor)}/Monat`,
+        },
+        {
+          label: 'Besteuerungsanteil',
+          value: formatPercent(
+            taxableShare(h.startYear + p.statePension.startAge - h.currentAge, paramsDe2026),
+          ),
+        },
+      ],
+    },
+    {
+      title: 'Steuern & Krankenversicherung',
+      icon: mdiScaleBalance,
+      items: [
+        { label: 'Steuern', value: p.tax.enabled ? 'berücksichtigt' : 'ausgeschaltet' },
+        { label: 'Sparer-Pauschbetrag', value: formatEuro(p.tax.saverAllowance) },
+        {
+          label: 'Kirchensteuer',
+          value: h.churchTaxRate > 0 ? formatPercent(h.churchTaxRate, 0) : 'keine',
+        },
+        { label: 'Günstigerprüfung', value: p.tax.guenstigerpruefung ? 'ja' : 'nein' },
+        {
+          label: 'Basiszins',
+          value:
+            p.tax.basiszins.type === 'fixed'
+              ? formatPercent(p.tax.basiszins.rate, 2)
+              : 'Anleiherendite',
+        },
+        {
+          label: 'KV bis Rentenbeginn',
+          value:
+            p.health.bridgePhase.type === 'pkv'
+              ? `PKV ${formatEuro(p.health.bridgePhase.monthlyPremium)}/Monat`
+              : 'GKV freiwillig',
+        },
+        { label: 'KV in der Rente', value: p.health.kvdrEligible ? 'KVdR' : 'GKV freiwillig' },
       ],
     },
     { title: 'Strategie', icon: mdiChartDonut, items: strategyItems(p.strategy) },

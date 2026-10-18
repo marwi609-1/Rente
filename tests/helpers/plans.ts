@@ -2,8 +2,9 @@ import { createDefaultPlan } from '@/domain/model/defaults'
 import type { RetirementPlan } from '@/domain/model/types'
 
 /**
- * Plan im Funktionsumfang der deterministischen Engine: fixe Allokation, Konsum `fixed-real`,
- * ohne Steuern und ohne Rente, jährliches Rebalancing auf das Ziel. `adjust` verändert die Kopie.
+ * Plan für Tests der Grundmechanik: fixe Allokation, Konsum `fixed-real`, ohne Steuern, ohne Rente
+ * und ohne Kosten der Krankenversicherung (PKV mit Beitrag 0 in der Überbrückung, KVdR auf eine
+ * Rente von 0), jährliches Rebalancing auf das Ziel. `adjust` verändert die Kopie.
  */
 export function enginePlan(adjust: (plan: RetirementPlan) => void = () => {}): RetirementPlan {
   const plan = createDefaultPlan(2026)
@@ -12,7 +13,15 @@ export function enginePlan(adjust: (plan: RetirementPlan) => void = () => {}): R
   plan.tax.enabled = false
   plan.statePension.monthlyGrossCurrent = 0
   plan.statePension.monthlyGrossProjected = 0
+  plan.health = {
+    bridgePhase: { type: 'pkv', monthlyPremium: 0, premiumGrowth: 0 },
+    kvdrEligible: true,
+    paramsGrowth: 0,
+  }
   plan.market.type = 'deterministic'
   adjust(plan)
   return plan
 }
+
+/** Unveränderte Abschnitte des Default-Szenarios, z. B. um Steuern oder Rente wieder einzuschalten. */
+enginePlan.defaults = () => createDefaultPlan(2026)
