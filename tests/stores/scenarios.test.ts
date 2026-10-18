@@ -73,15 +73,18 @@ describe('Szenario-Store', () => {
     expect(scenarios.activeId).toBeNull()
   })
 
-  it('exportiert und importiert Szenarien identisch', async () => {
-    const { scenarios } = setup()
+  it('exportiert und importiert Szenarien identisch und lädt den Import in die Eingabe', async () => {
+    const { planStore, scenarios } = setup()
     const file = scenarios.exportScenario('preset-pessimistisch')!
     expect(file.fileName).toBe('Pessimistisch.json')
     const result = await scenarios.importScenario(file.content)
     expect(result).toEqual({ ok: true, name: 'Pessimistisch' })
     expect(scenarios.saved[0].plan).toEqual(scenarios.presets[1].plan)
+    expect(planStore.plan).toEqual(scenarios.presets[1].plan)
+    expect(scenarios.activeId).toBe(scenarios.saved[0].id)
     const rejected = await scenarios.importScenario(JSON.stringify({ schemaVersion: 1 }))
     expect(rejected.ok).toBe(false)
+    expect(planStore.plan.name).toBe('Pessimistisch')
   })
 
   it('vergleicht bis zu drei Szenarien mit demselben Seed', async () => {

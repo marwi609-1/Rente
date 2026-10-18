@@ -86,7 +86,10 @@ async function importFile(event: Event): Promise<void> {
   if (!file) return
   const result = await scenarios.importScenario(await file.text())
   message.value = result.ok
-    ? { type: 'success', text: `„${result.name}“ importiert.` }
+    ? {
+        type: 'success',
+        text: `„${result.name}“ importiert, gespeichert und in die Eingabe geladen.`,
+      }
     : {
         type: 'error',
         text: result.message,
