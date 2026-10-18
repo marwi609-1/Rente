@@ -321,12 +321,12 @@ zuerst ausgewählten (Common Random Numbers); ihre Pfadzahl und alle anderen Ein
 Vergleichstabelle zeigt die Kennzahlen des Hauptlaufs, nicht sichere Entnahme und FIRE-Status (die
 Suchen würden den Vergleich vervielfachen).
 
-**A77 – Import des Ursprungsformats (offen).** Die Spezifikation verlangt eine Migration von
-Version 1 (Ursprungsformat mit `yearlyWithdrawal`, `taxRate` usw.), getestet mit dem
-Ursprungs-Default-JSON. Dieses Format liegt nicht vor; ein erfundenes v1-Schema würde die Regel
-verletzen, keine Daten zu erfinden. Auf Entscheidung des Nutzers ist die Migration zurückgestellt:
-Dateien mit `schemaVersion` 1 werden mit einer klaren Meldung abgelehnt. Migration und Test folgen,
-sobald das Ursprungs-JSON bereitsteht.
+**A77 – Keine Migration des Ursprungsformats.** Die Spezifikation sieht eine Migration von
+Version 1 (Ursprungsformat mit `yearlyWithdrawal`, `taxRate` usw.) auf Version 2 vor, getestet mit
+dem Ursprungs-Default-JSON. Das Format ist nicht dokumentiert, und es gibt keine Szenario-Dateien
+der alten Version, die übernommen werden müssten. Auf Entscheidung des Nutzers entfällt die
+Migration daher. Dateien mit `schemaVersion` 1 werden mit einer klaren Meldung abgelehnt; importiert
+werden nur Dateien mit `schemaVersion` 2.
 
 ## Steuern
 

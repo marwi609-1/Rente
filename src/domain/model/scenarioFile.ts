@@ -14,7 +14,7 @@ export function exportPlan(plan: RetirementPlan): string {
 
 /**
  * Liest eine Szenario-Datei und prüft sie mit dem zod-Schema. Dateien im Ursprungsformat
- * (`schemaVersion` 1) werden abgelehnt, bis die Migration auf Version 2 vorliegt.
+ * (`schemaVersion` 1) werden abgelehnt; eine Migration ist nicht vorgesehen (ASSUMPTIONS.md, A77).
  */
 export function importPlan(text: string): PlanImportResult {
   let data: unknown
@@ -31,7 +31,7 @@ export function importPlan(text: string): PlanImportResult {
     return {
       ok: false,
       message:
-        'Szenarien im Ursprungsformat (schemaVersion 1) können noch nicht importiert werden; die Migration auf Version 2 folgt.',
+        'Szenarien im Ursprungsformat (schemaVersion 1) werden nicht unterstützt; importiert werden nur Dateien mit schemaVersion 2.',
       issues: [],
     }
   }

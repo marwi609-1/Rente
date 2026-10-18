@@ -74,5 +74,5 @@ npm run dev
 ¹ Der Plausibilitätsanker (historische Sequenzen ab 1926, 4 %, 50/50) ergibt mit den Shiller-Daten
 91,5 % statt der geforderten ≥ 95 %; siehe [A26](docs/ASSUMPTIONS.md).
 
-² Ohne Migration des Ursprungsformats (v1 → v2): Das Ursprungs-Default-JSON liegt nicht vor, die
-Migration ist auf Entscheidung des Nutzers zurückgestellt; siehe [A77](docs/ASSUMPTIONS.md).
+² Ohne Migration des Ursprungsformats (v1 → v2); sie entfällt auf Entscheidung des Nutzers, siehe
+[A77](docs/ASSUMPTIONS.md).
