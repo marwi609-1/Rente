@@ -69,8 +69,8 @@ Einstand `B = (B_A, B_B)` und Zielallokation `w_t` der Strategie (siehe „Strat
    Bucket im Ruhestand der Reihe nach aus Cash, Anleihen, Aktien) so,
    dass `S_t + R_t + V = Konsum + E_t + G_t(V)`, wobei `G_t(V)` die bis dahin fälligen Steuern und
    KV-Beiträge des Jahres sind (Jahresabrechnung unten, mit den realisierten Gewinnen aus `V`).
-   Gelöst per Fixpunktiteration `V ← clamp(Konsum + E_t + G_t(V) − S_t − R_t, 0, Σh)` bis
-   `|ΔV| < 1 Cent` (Lösungsverfahren siehe „Fixpunktlöser“).
+   Gelöst als Fixpunkt `V = clamp(Konsum + E_t + G_t(V) − S_t − R_t, 0, Σh)` auf 1 Cent genau
+   (Lösungsverfahren siehe „Fixpunktlöser“).
    Reicht das Depot nicht, hat laufender Konsum Vorrang vor Einmalausgaben.
 5. **Überschuss** (Sparrate, Rente über Bedarf) wird gemäß Zielallokation investiert (mit `taxAware`
    und beim Bucket im Ruhestand in die untergewichteten Klassen); der Einstand steigt um den
@@ -93,15 +93,20 @@ Fonds; Verlustvortrag `lossCarryForward`.
 Alle Hochrechnungen (Entnahme, Steuerzahlung zum Jahresende, Steuer auf das Rebalancing) lösen
 `x = clamp(b(x), lower, upper)` mit dem Bedarf `b`:
 
-1. Iteration `x ← clamp(b(x))` ab `start`, bis `|Δx| < 1 Cent` (höchstens 30 Schritte).
-2. Ohne Konvergenz: Gibt es unter den Kandidaten einen mit ungedecktem (`b(x) > x`) und einen
-   größeren mit gedecktem Bedarf (`b(x) ≤ x`), wird dazwischen per Bisektion auf 1 Cent eingegrenzt
-   und der kleinste deckende Kandidat genommen, sofern seine Überdeckung `x − b(x)` höchstens 10 €
-   beträgt. Das betrifft Sprungstellen von `b`: zvE und Steuer werden auf volle Euro abgerundet, und
-   der realisierte Gewinn steigt nicht streng mit dem Verkaufsbetrag, weil sich mit dem Betrag die
-   Aufteilung auf die Anlageklassen ändert. Ohne Fixpunkt pendelt die Iteration dann zwischen zwei
-   Werten.
+1. Iteration `x ← clamp(b(x))` ab `start`, beschleunigt durch einen Sekantenschritt auf
+   `g(x) = clamp(b(x)) − x`, solange sich die Kandidaten der Lösung von derselben Seite nähern und
+   `g` fällt (höchstens 30 Schritte). Gelöst ist `x` bei `|g(x)| < 1 Cent`. Weil Steuer und KV je
+   Tarifzone linear im Verkauf sind, trifft die Sekante die Lösung meist im ersten Versuch.
+2. Wechselt `g` das Vorzeichen, ist die Lösung eingeschlossen: Regula falsi (Illinois-Variante)
+   innerhalb des Intervalls bis 1 Cent. Hat `g` dort eine Sprungstelle statt einer Nullstelle, wird
+   der deckende Rand (`b(x) ≤ x`) genommen, sofern seine Überdeckung `x − b(x)` höchstens 10 €
+   beträgt. Sprungstellen entstehen, weil zvE und Steuer auf volle Euro abgerundet werden und der
+   realisierte Gewinn nicht streng mit dem Verkaufsbetrag steigt (mit dem Betrag ändert sich die
+   Aufteilung auf die Anlageklassen).
 3. Sonst wird eine Restabweichung `|b(x) − x|` bis 1 € akzeptiert, darüber ein Fehler gemeldet.
+
+Die Entnahme startet beim Verkauf des Vorjahres in Preisen des laufenden Jahres, die übrigen
+Hochrechnungen bei 0 bzw. der offenen Zahlung. Umschichtungen unter 1 Cent unterbleiben.
 
 ## Jahresabrechnung: Steuern und Krankenversicherung
 
@@ -328,8 +333,11 @@ bitgleich unabhängig von Paketgröße und Worker-Zahl. Je Pfad und Jahr gespeic
 Einkommensteuer und KV/PV (jeweils `/ I_t`), die Anteile von Aktien, Anleihen und Cash zum
 Jahresende und der Preisindex `I_t`; je Pfad außerdem Alter des ersten Fehljahres und Sterbealter.
 
-- **Perzentile** 5, 10, 25, 50, 75, 90, 95 je Jahr und Reihe, lineare Interpolation zwischen den
-  Ordnungsstatistiken (Hyndman/Fan Typ 7): `h = (N − 1) p`, `x_⌊h⌋ + (h − ⌊h⌋)(x_⌊h⌋+1 − x_⌊h⌋)`.
+- **Perzentile** 5, 10, 25, 50, 75, 90, 95 je Jahr für `total`, `totalReal` und die Anteile der
+  Anlageklassen, lineare Interpolation zwischen den Ordnungsstatistiken (Hyndman/Fan Typ 7):
+  `h = (N − 1) p`, `x_⌊h⌋ + (h − ⌊h⌋)(x_⌊h⌋+1 − x_⌊h⌋)`. Die Ordnungsstatistiken werden per
+  Quickselect bestimmt statt durch vollständiges Sortieren (gleiches Ergebnis). Die übrigen Reihen
+  speisen Median-Pfad und Kennzahlen.
 - **Erfolgsquote** `p̂` = Anteil der Pfade ohne Fehljahr bis zum Horizont, Standardfehler
   `√(p̂(1 − p̂)/N)`.
 - **Vermögen mit 90 / 95:** Median, P10 und P90 von `totalReal` bzw. `total` am Ende des Jahres, in

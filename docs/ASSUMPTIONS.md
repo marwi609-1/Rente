@@ -211,8 +211,9 @@ verkaufen: Zuflüsse stellen das Ziel genau her, und schon kleine Kursbewegungen
 erneut, während ohne Flusssteuerung gegenläufige Drift das Band seltener auslöst.
 
 **A57 – Geldfluss beim Rebalancing.** Der Erlös nach Steuern wird vollständig in die Lücken
-investiert. Weil die Steuer per Fixpunktiteration (Toleranz 1 Cent) bestimmt wird, kann der Bestand
+investiert. Weil die Steuer mit dem Fixpunktlöser (Toleranz 1 Cent) bestimmt wird, kann der Bestand
 um diese Toleranz neben dem exakten Ziel liegen; Geld entsteht oder verschwindet dabei nicht.
+Umschichtungen unter 1 Cent (Rundungsrauschen der Steuerzahlung) unterbleiben.
 
 **A58 – Vorbelegungen beim Variantenwechsel.** Wechselt man in der Eingabe Strategie,
 Entnahmeregel, Langlebigkeitsmodell, KV in der Überbrückung oder Basiszins, erhält die neue Variante
@@ -233,11 +234,20 @@ Brutto-Hochrechnung in der Überbrückungsphase zwischen 115.801,19 € (Bedarf 
 1,12 €. Die Günstigerprüfung rundet zvE und Steuer auf volle Euro ab (§ 32a Abs. 1 EStG), und mit dem
 Verkaufsbetrag ändert sich die Aufteilung auf die Anlageklassen und damit der realisierte Gewinn;
 einen exakten Fixpunkt gibt es nicht. Ein Fehler würde den ganzen Lauf verwerfen. Stattdessen wird die
-Sprungstelle per Bisektion eingegrenzt und der kleinste Verkauf genommen, der den Bedarf deckt
+Sprungstelle per Regula falsi eingegrenzt und der kleinste Verkauf genommen, der den Bedarf deckt
 (Überdeckung höchstens 10 €, sie wird investiert). Größere Sprünge oder fehlende Konvergenz ohne
-eingrenzbaren Wechsel führen weiterhin zum Fehler. Geprüft: Default-Szenario und acht Varianten
-(Student-t, Block-Bootstrap, Bucket, Guyton-Klinger, VPW, ohne KVdR, PKV mit Kirchensteuer, ohne
-Günstigerprüfung) mit je 10.000 Pfaden ohne Fehler.
+eingrenzbaren Wechsel führen weiterhin zum Fehler. Geprüft: Default-Szenario und zwölf Varianten
+(Student-t, Block-Bootstrap, historische Sequenzen, Bucket, Guyton-Klinger, VPW, Floor & Ceiling,
+Prozent vom Depot, ohne KVdR, PKV mit Kirchensteuer, ohne Günstigerprüfung, Ruhestand mit 60) mit je
+10.000 Pfaden (historisch: alle Startjahre), dazu beide Heatmap-Raster mit je 2.000 Pfaden je Zelle
+und die PWR auf 1.000 Pfaden, ohne Fehler.
+
+**A78 – Beschleunigter Fixpunktlöser.** Die Spezifikation nennt eine Fixpunktiteration. Die
+Iteration wird durch Sekantenschritte beschleunigt, bei eingeschlossener Lösung durch Regula falsi;
+die Entnahme startet beim Vorjahresverkauf. Die Lösung bleibt dieselbe (1 Cent genau), es werden nur
+weniger Steuer- und KV-Abrechnungen gebraucht: im Mittel 2,5 statt 4,8 je Entnahme, die Simulation
+wird dadurch rund 40 % schneller. Ergebnisse weichen um Cent-Beträge ab; Pfade, deren
+Rebalancing-Abweichung genau auf dem Band liegt, können dadurch anders umschichten.
 
 ## Oberfläche und Auswertung
 

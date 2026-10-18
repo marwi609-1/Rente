@@ -23,6 +23,9 @@ import type { YearResult } from './types'
 /** Fehlbeträge unter einem Cent gelten als Rundungsrauschen. */
 const SHORTFALL_TOLERANCE = 0.01
 
+/** Umschichtungen unter einem Cent (Rundungsrauschen der Steuerzahlung) unterbleiben. */
+const TRADE_TOLERANCE = 0.01
+
 /** Einstandswerte der Fondsanteile (Durchschnittsmethode); Cash hat keinen Kursgewinn. */
 interface CostBasis {
   equity: number
@@ -199,6 +202,8 @@ export function createPathSimulator(plan: RetirementPlan, ctx: EngineContext): P
     let lossCarryForward = plan.portfolio.lossCarryForward
     let index = 1
     let previousReturn: number | null = null
+    // Startwert der Brutto-Hochrechnung: Verkauf des Vorjahres in Preisen des laufenden Jahres
+    let previousSales = 0
     const consumptionFor = newWithdrawalPolicy()
 
     for (let t = 0; t < years; t++) {
@@ -249,7 +254,7 @@ export function createPathSimulator(plan: RetirementPlan, ctx: EngineContext): P
           const required = consumptionTarget(charges) + oneOff + charges.total - inflows
           return { required, state: { sale, charges } }
         },
-        { lower: 0, upper: totalOf(holdings), start: 0 },
+        { lower: 0, upper: totalOf(holdings), start: previousSales },
       )
       const { sale: openingSale } = opening.state
       let charges = opening.state.charges
@@ -391,24 +396,26 @@ export function createPathSimulator(plan: RetirementPlan, ctx: EngineContext): P
           { lower: -total, upper: total, start: 0 },
         )
         const { sells, deficits, sale } = rebalanced.state
-        charges = rebalanced.state.charges
-        // Der Erlös nach Steuern füllt die Lücken anteilig; Σ Lücken = Σ Verkäufe + Zufluss − Steuer,
-        // ohne Zufluss gehen sie also genau auf.
-        const proceeds = Math.max(0, sale.proceeds - (charges.total - paid))
-        const deficitSum = totalOf(deficits)
-        const buys = zeroVector()
-        if (deficitSum > 0) {
-          for (const k of ASSET_CLASSES) buys[k] = (proceeds * deficits[k]) / deficitSum
+        if (totalOf(sells) >= TRADE_TOLERANCE) {
+          charges = rebalanced.state.charges
+          // Der Erlös nach Steuern füllt die Lücken anteilig; Σ Lücken = Σ Verkäufe + Zufluss −
+          // Steuer, ohne Zufluss gehen sie also genau auf.
+          const proceeds = Math.max(0, sale.proceeds - (charges.total - paid))
+          const deficitSum = totalOf(deficits)
+          const buys = zeroVector()
+          if (deficitSum > 0) {
+            for (const k of ASSET_CLASSES) buys[k] = (proceeds * deficits[k]) / deficitSum
+          }
+          rebalanceSales = totalOf(sells)
+          capitalNet += sale.taxableGain
+          basis = addToBasis(sale.basis, buys)
+          holdings = {
+            equity: sale.holdings.equity + buys.equity,
+            bonds: sale.holdings.bonds + buys.bonds,
+            cash: sale.holdings.cash + buys.cash,
+          }
+          paid = charges.total
         }
-        rebalanceSales = totalOf(sells)
-        capitalNet += sale.taxableGain
-        basis = addToBasis(sale.basis, buys)
-        holdings = {
-          equity: sale.holdings.equity + buys.equity,
-          bonds: sale.holdings.bonds + buys.bonds,
-          cash: sale.holdings.cash + buys.cash,
-        }
-        paid = charges.total
       }
 
       // 9. Fortschreibung des Verlustvortrags
@@ -449,6 +456,7 @@ export function createPathSimulator(plan: RetirementPlan, ctx: EngineContext): P
         bondShare: shares.bonds,
         cashShare: shares.cash,
       })
+      previousSales = grossSales * (1 + returns.inflation[t])
       index = indexEnd
       previousReturn = portfolioReturn
     }
