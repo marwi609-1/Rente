@@ -371,3 +371,12 @@ describe('Weitere Einkünfte im Schema', () => {
     expect(issues.map((i) => i.path)).toContain('additionalIncome.0.contractYear')
   })
 })
+
+describe('Krankenversicherung ab Rentenbeginn', () => {
+  it('ergänzt in älteren Szenarien die GKV', () => {
+    const old = createDefaultPlan(2026) as unknown as { health: Record<string, unknown> }
+    delete old.health.pensionPhase
+    const result = validatePlan(old)
+    expect(result.ok && result.plan.health.pensionPhase).toEqual({ type: 'gkv' })
+  })
+})

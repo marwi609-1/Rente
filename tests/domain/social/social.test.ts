@@ -207,3 +207,41 @@ describe('KV/PV auf Versorgungsbezüge und weitere Einnahmen', () => {
     )
   })
 })
+
+describe('PKV ab Rentenbeginn', () => {
+  const plan = createDefaultPlan(2026)
+  const pkv = { type: 'pkv' as const, monthlyPremium: 950, premiumGrowth: 0.03 }
+  const charge = (patch: Partial<HealthChargeInput>) =>
+    healthCharge({
+      phase: 'pension',
+      health: { ...plan.health, pensionPhase: pkv },
+      childless: false,
+      pensionGross: 20_000,
+      capitalBase: 50_000,
+      yearIndex: 0,
+      params,
+      occupational: 12_000,
+      voluntaryIncome: 10_000,
+      ...patch,
+    })
+
+  it('Beitrag abzüglich RV-Zuschuss, keine Beiträge auf Kapitalerträge oder Betriebsrenten', () => {
+    const c = charge({})
+    expect(c.total).toBeCloseTo(11_400 - 20_000 * 0.0875, 9)
+    expect(c.deductible).toBe(0)
+    expect(charge({ yearIndex: 2 }).total).toBeCloseTo(11_400 * 1.03 ** 2 - 20_000 * 0.0875, 9)
+  })
+
+  it('begrenzt den Zuschuss auf die Hälfte des Beitrags (§ 106 SGB VI)', () => {
+    const c = healthCharge({
+      phase: 'pension',
+      health: { ...plan.health, pensionPhase: { ...pkv, monthlyPremium: 300 } },
+      childless: false,
+      pensionGross: 40_000,
+      capitalBase: 0,
+      yearIndex: 0,
+      params,
+    })
+    expect(c.total).toBeCloseTo(1_800, 9)
+  })
+})

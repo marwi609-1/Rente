@@ -57,6 +57,8 @@ function ratio(part: number, whole: number): number {
  *   Bei freiwillig Versicherten nach der Rente und vor den übrigen Einnahmen, ohne Freibetrag.
  * - Weitere Einnahmen (private Renten, Riester, Versicherungsleistungen) zählen nur bei freiwillig
  *   Versicherten, mit dem ermäßigten Satz.
+ * - Rente in der PKV: fester Beitrag mit Steigerung abzüglich RV-Zuschuss (§ 106 SGB VI), keine
+ *   Beiträge auf Renten, Versorgungsbezüge oder Kapitalerträge.
  */
 export function healthCharge(input: HealthChargeInput): HealthCharge {
   const { phase, health, params, yearIndex } = input
@@ -96,6 +98,16 @@ export function healthCharge(input: HealthChargeInput): HealthCharge {
   }
 
   const pension = Math.min(input.pensionGross, ceiling)
+  if (health.pensionPhase.type === 'pkv') {
+    const premium =
+      health.pensionPhase.monthlyPremium *
+      12 *
+      Math.pow(1 + health.pensionPhase.premiumGrowth, yearIndex)
+    // RV-Zuschuss: halber allgemeiner Satz plus halber Zusatzbeitrag auf die Rente, höchstens die
+    // Hälfte des Beitrags (§ 106 SGB VI); steuerfrei. Basisanteil wie in der Überbrückung nicht abziehbar.
+    const subsidy = Math.min(pension * halfHealthRate, premium / 2)
+    return { total: premium - subsidy, onPension: 0, onIncome: 0, deductible: 0 }
+  }
   if (health.kvdrEligible) {
     const onPension = pension * (halfHealthRate + careRate)
     let onOccupational = 0

@@ -179,6 +179,9 @@ Rechengrößen wachsen mit `paramsGrowth`: `Min_t = 1.318,33 · 12 · (1+g)^t`,
   § 57 Abs. 1 SGB XI). Freiwillig: nach der Rente und vor den übrigen Einnahmen, `(14,6 % + ZB + p)`
   ohne Freibetrag. Weitere Einnahmen (private Renten, Riester, Versicherungsleistungen mit dem
   Zahlbetrag) zählen nur bei freiwillig Versicherten zu `X`.
+- Rente in der PKV (`pensionPhase = pkv`): `monthlyPremium · 12 · (1 + premiumGrowth)^t` abzüglich
+  RV-Zuschuss `min(R̃ · (14,6 % + ZB)/2; Beitrag/2)` (§ 106 SGB VI); keine Beiträge auf
+  Versorgungsbezüge, weitere Einnahmen oder Kapitalerträge.
 - Abziehbar als Basis-Vorsorgeaufwendungen: GKV-Beiträge voll, PKV nicht (Annahme).
 
 ## Weitere Einkünfte

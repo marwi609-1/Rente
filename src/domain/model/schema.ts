@@ -213,6 +213,13 @@ const healthSchema = z.object({
     z.object({ type: z.literal('gkv-voluntary') }),
     z.object({ type: z.literal('pkv'), monthlyPremium: eur, premiumGrowth: smallRate }),
   ]),
+  // fehlt in Szenarien vor Version 1.06
+  pensionPhase: z
+    .discriminatedUnion('type', [
+      z.object({ type: z.literal('gkv') }),
+      z.object({ type: z.literal('pkv'), monthlyPremium: eur, premiumGrowth: smallRate }),
+    ])
+    .default({ type: 'gkv' }),
   kvdrEligible: z.boolean(),
   paramsGrowth: smallRate,
 })

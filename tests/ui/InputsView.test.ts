@@ -4,6 +4,7 @@ import { flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 
 import { validatePlan } from '@/domain/model/validation'
+import { defaultPensionInsurance } from '@/domain/model/variants'
 import { INPUT_TABS } from '@/router'
 import { usePlanStore } from '@/stores/plan'
 import InputsView from '@/ui/views/InputsView.vue'
@@ -178,5 +179,24 @@ describe('Weitere Einkünfte', () => {
 
     await wrapper.get('[aria-label="Einkunft 1 entfernen"]').trigger('click')
     expect(store.plan.additionalIncome).toHaveLength(0)
+  })
+})
+
+describe('PKV ab Rentenbeginn', () => {
+  it('übernimmt beim Wechsel den PKV-Beitrag der Überbrückung und blendet die KVdR aus', async () => {
+    const { wrapper, store } = await open('krankenversicherung')
+    store.plan.health.bridgePhase = { type: 'pkv', monthlyPremium: 950, premiumGrowth: 0.03 }
+    await flushPromises()
+    expect(wrapper.find('[data-path="health.kvdrEligible"]').exists()).toBe(true)
+    store.plan.health.pensionPhase = defaultPensionInsurance('pkv', store.plan.health)
+    expect(store.plan.health.pensionPhase).toEqual({
+      type: 'pkv',
+      monthlyPremium: 950,
+      premiumGrowth: 0.03,
+    })
+    await flushPromises()
+    expect(wrapper.find('[data-path="health.pensionPhase.monthlyPremium"]').exists()).toBe(true)
+    expect(wrapper.find('[data-path="health.kvdrEligible"]').exists()).toBe(false)
+    expect(store.validation.ok).toBe(true)
   })
 })
