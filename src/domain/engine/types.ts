@@ -37,9 +37,13 @@ export interface YearResult {
   pensionGross: EUR
   /** Rente nach Einkommensteuer und KV/PV-Anteil */
   pensionNet: EUR
+  /** weitere Einkünfte brutto: laufende Zahlungen und Einmalzahlungen */
+  otherIncomeGross: EUR
+  /** laufende weitere Einkünfte nach anteiliger Einkommensteuer und KV/PV */
+  otherIncomeNet: EUR
   /** Steuer auf Kapitalerträge des Jahres (Abgeltungsteuer bzw. Mehrsteuer bei Günstigerprüfung) */
   capitalTax: EUR
-  /** Einkommensteuer mit Soli und Kirchensteuer auf die Rente */
+  /** Einkommensteuer mit Soli und Kirchensteuer auf Rente und weitere Einkünfte */
   incomeTax: EUR
   /** Beiträge zu KV/PV bzw. PKV nach Zuschuss der Rentenversicherung */
   healthInsurance: EUR

@@ -93,15 +93,24 @@ export function wealthFanData(
   }
 }
 
-/** Einkommen und Ausgaben des Median-Pfades je Alter. */
+/**
+ * Einkommen und Ausgaben des Median-Pfades je Alter; weitere Einkünfte nur, wenn der Pfad welche
+ * hat. Einmalzahlungen fließen ins Depot und erscheinen hier nicht.
+ */
 export function incomeData(summary: MonteCarloSummary, real: boolean): StackedAgeData {
   const m = summary.medianPath
   const unit = (values: number[]) => (real ? values : values.map((v, t) => v * m.priceIndex[t]))
-  const depotConsumption = m.consumptionReal.map((c, t) => Math.max(0, c - m.pensionNetReal[t]))
+  const depotConsumption = m.consumptionReal.map((c, t) =>
+    Math.max(0, c - m.pensionNetReal[t] - m.otherIncomeNetReal[t]),
+  )
+  const other = m.otherIncomeNetReal.some((v) => v > 0)
+    ? [{ name: 'Weitere Einkünfte netto', values: unit(m.otherIncomeNetReal) }]
+    : []
   return {
     ages: summary.ages,
     series: [
       { name: 'Netto-Rente', values: unit(m.pensionNetReal) },
+      ...other,
       { name: 'Depotfinanzierter Konsum', values: unit(depotConsumption) },
       { name: 'Kapitalertragsteuer', values: unit(m.capitalTaxReal) },
       { name: 'Einkommensteuer', values: unit(m.incomeTaxReal) },

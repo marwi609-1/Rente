@@ -60,6 +60,8 @@ export interface MedianPath {
   total: number[]
   consumptionReal: number[]
   pensionNetReal: number[]
+  /** laufende weitere Einkünfte netto */
+  otherIncomeNetReal: number[]
   capitalTaxReal: number[]
   incomeTaxReal: number[]
   healthInsuranceReal: number[]
@@ -172,6 +174,7 @@ export function medianPath(block: PathBlock): MedianPath {
     total: read('total'),
     consumptionReal: read('consumptionReal'),
     pensionNetReal: read('pensionNetReal'),
+    otherIncomeNetReal: read('otherIncomeNetReal'),
     capitalTaxReal: read('capitalTaxReal'),
     incomeTaxReal: read('incomeTaxReal'),
     healthInsuranceReal: read('healthInsuranceReal'),

@@ -36,8 +36,10 @@ npm run dev
   - `strategy/` Zielallokation (fix, Glidepath, Bond Tent), Bucket, Zu- und Abflüsse, Rebalancing
   - `withdrawal/` Entnahmeregeln (fix real, Prozent, Guyton-Klinger, VPW, Floor-Ceiling),
     Ausgabenprofil, Einmalausgaben
-  - `tax/` Abgeltungsteuer, Vorabpauschale, Verlustverrechnung, Einkommensteuer § 32a,
-    Rentenbesteuerung, Jahresabrechnung mit Günstigerprüfung
+  - `tax/` Abgeltungsteuer, Vorabpauschale, Verlustverrechnung, Einkommensteuer § 32a mit
+    Fünftelregelung, Renten- und Versorgungsbezüge, Jahresabrechnung mit Günstigerprüfung
+  - `income/` weitere Einkünfte (Betriebsrente, Riester, Altersvorsorgedepot, Basisrente,
+    Versicherungen): Zahlungsplan, steuerliche und KV-Einordnung
   - `social/` gesetzliche Rente, Kranken- und Pflegeversicherung
   - `longevity/` fester Horizont, Gompertz, Kohortensterbetafel
   - `engine/` Jahresschritt, Pfad, Monte Carlo, Kennzahlen, Umrechnung real/nominal, sichere

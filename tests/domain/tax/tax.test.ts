@@ -1,10 +1,16 @@
 import { describe, expect, it } from 'vitest'
 
 import { paramsDe2026 as params } from '@/data/params-de-2026'
+import type { IncomeYear } from '@/domain/income/schedule'
 import { createDefaultPlan } from '@/domain/model/defaults'
 import { annualCharges, type ChargeSettings, type ChargeYear } from '@/domain/tax/annualCharges'
 import { capitalTaxRate, taxableCapitalIncome, vorabpauschale } from '@/domain/tax/capitalIncome'
-import { incomeTaxTotal, solidaritySurcharge, tariffIncomeTax } from '@/domain/tax/incomeTax'
+import {
+  incomeTaxTotal,
+  solidaritySurcharge,
+  tariffIncomeTax,
+  tariffWithExtraordinary,
+} from '@/domain/tax/incomeTax'
 import { pensionAllowance, pensionIncome, taxableShare } from '@/domain/tax/pensionTax'
 
 function settings(adjust: (s: ChargeSettings) => void = () => {}): ChargeSettings {
@@ -194,5 +200,116 @@ describe('Günstigerprüfung', () => {
       21_000,
     )
     expect(charges.capitalTax).toBeCloseTo(20_000 * 0.26375, 9)
+  })
+})
+
+describe('Weitere Einkünfte in der Jahresabrechnung', () => {
+  const income = (patch: Partial<IncomeYear>): IncomeYear => ({
+    recurring: 0,
+    lumpSum: 0,
+    section22Recurring: 0,
+    section22LumpSum: 0,
+    tariffRecurring: 0,
+    tariffLumpSum: 0,
+    extraordinary: 0,
+    insuranceHalfGain: 0,
+    insuranceGain: 0,
+    occupationalRecurring: 0,
+    occupationalSpread: 0,
+    voluntaryRecurring: 0,
+    voluntaryLumpSum: 0,
+    ...patch,
+  })
+  // ohne KV-Beiträge in der Überbrückung (PKV mit Beitrag 0)
+  const noHealth = (s: ChargeSettings) =>
+    (s.health = {
+      bridgePhase: { type: 'pkv', monthlyPremium: 0, premiumGrowth: 0 },
+      kvdrEligible: true,
+      paramsGrowth: 0,
+    })
+  const pensionYear: ChargeYear = {
+    ...workYear,
+    phase: 'pension',
+    pensionGross: 20_000,
+    pensionAllowance: 2_000,
+  }
+  const t = params.incomeTax
+
+  it('Fünftelregelung (§ 34 Abs. 1 EStG), auch bei negativem übrigen zvE', () => {
+    expect(tariffWithExtraordinary(20_000, 50_000, t)).toBe(
+      tariffIncomeTax(20_000, t) + 5 * (tariffIncomeTax(30_000, t) - tariffIncomeTax(20_000, t)),
+    )
+    expect(tariffWithExtraordinary(-5_000, 50_000, t)).toBe(5 * tariffIncomeTax(9_000, t))
+    expect(tariffWithExtraordinary(-60_000, 50_000, t)).toBe(0)
+    expect(incomeTaxTotal(20_000, params, 0, 1, 50_000).incomeTax).toBe(
+      tariffWithExtraordinary(20_000, 50_000, t),
+    )
+  })
+
+  it('Werbungskosten-Pauschbetrag einmal für Rente und Riester, Steuer anteilig auf die Rente', () => {
+    const year = {
+      ...pensionYear,
+      income: income({ recurring: 3_600, section22Recurring: 3_600, voluntaryRecurring: 3_600 }),
+    }
+    const c = annualCharges(settings(noHealth), year, 0)
+    const expected = incomeTaxTotal(18_000 + 3_600 - 102 - 36 - c.health, params, 0).total
+    expect(c.incomeTaxRecurring).toBeCloseTo(expected, 9)
+    expect(c.incomeTax).toBe(c.incomeTaxRecurring)
+    const pensionTaxable = 18_000 - (102 * 18_000) / 21_600
+    expect(c.incomeTaxOnPension).toBeCloseTo((expected * pensionTaxable) / (21_600 - 102), 9)
+  })
+
+  it('schichtet Einmalzahlungen auf die laufenden Einkünfte', () => {
+    const c = annualCharges(
+      settings(noHealth),
+      { ...pensionYear, income: income({ lumpSum: 50_000, section22LumpSum: 50_000 }) },
+      0,
+    )
+    const deductions = 36 + c.health
+    expect(c.incomeTaxRecurring).toBeCloseTo(
+      incomeTaxTotal(18_000 - 102 - deductions, params, 0).total,
+      9,
+    )
+    expect(c.incomeTax).toBeCloseTo(incomeTaxTotal(68_000 - 102 - deductions, params, 0).total, 9)
+  })
+
+  it('besteuert Kapitalabfindungen von Versorgungsbezügen nach der Fünftelregelung', () => {
+    const c = annualCharges(
+      settings(noHealth),
+      { ...pensionYear, income: income({ lumpSum: 40_000, extraordinary: 40_000 }) },
+      0,
+    )
+    const rest = 18_000 - 102 - 36 - c.health
+    expect(c.incomeTax).toBeCloseTo(incomeTaxTotal(rest, params, 0, 1, 40_000).total, 9)
+  })
+
+  it('halber Versicherungsertrag: Rest des Sparer-Pauschbetrags, dann Tarif', () => {
+    const c = annualCharges(
+      settings(noHealth),
+      { ...workYear, phase: 'bridge', income: income({ insuranceHalfGain: 15_000 }) },
+      400,
+    )
+    expect(c.incomeTax).toBeCloseTo(incomeTaxTotal(15_000 - 600 - 36, params, 0).total, 9)
+    expect(c.capitalTax).toBe(0)
+  })
+
+  it('Versicherungsertrag ohne hälftigen Ansatz: Abgeltungsteuer', () => {
+    const c = annualCharges(
+      settings(noHealth),
+      { ...workYear, phase: 'bridge', income: income({ insuranceGain: 30_000 }) },
+      0,
+    )
+    expect(c.capitalTax).toBeCloseTo(29_000 * 0.26375, 9)
+    expect(c.incomeTax).toBe(0)
+  })
+
+  it('besteuert weitere Einkünfte in der Erwerbsphase mit 42 % zuzüglich Soli', () => {
+    const c = annualCharges(
+      settings(),
+      { ...workYear, income: income({ lumpSum: 10_000, tariffLumpSum: 10_000 }) },
+      0,
+    )
+    expect(c.incomeTax).toBeCloseTo(10_000 * 0.42 * 1.055, 9)
+    expect(c.incomeTaxRecurring).toBe(0)
   })
 })

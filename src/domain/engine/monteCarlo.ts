@@ -16,6 +16,7 @@ export const PATH_SERIES = [
   'consumptionReal',
   'shortfallReal',
   'pensionNetReal',
+  'otherIncomeNetReal',
   'capitalTaxReal',
   'incomeTaxReal',
   'healthInsuranceReal',
@@ -124,6 +125,7 @@ export function simulateBlock(
       series.consumptionReal[i] = row.netConsumption / row.inflationIndex
       series.shortfallReal[i] = row.shortfall / row.inflationIndex
       series.pensionNetReal[i] = row.pensionNet / row.inflationIndex
+      series.otherIncomeNetReal[i] = row.otherIncomeNet / row.inflationIndex
       series.capitalTaxReal[i] = row.capitalTax / row.inflationIndex
       series.incomeTaxReal[i] = row.incomeTax / row.inflationIndex
       series.healthInsuranceReal[i] = row.healthInsurance / row.inflationIndex

@@ -32,6 +32,8 @@ export interface RetirementPlan {
   savings: Savings
   spending: Spending
   statePension: StatePension
+  /** weitere Alterseinkünfte (Betriebsrente, Riester, Versicherungen …) */
+  additionalIncome: AdditionalIncome[]
   health: HealthInsurance
   tax: TaxConfig
   market: MarketModel
@@ -115,6 +117,53 @@ export interface StatePension {
   earlyStartAllowed: boolean
   /** nominale Rentenanpassung p. a. ab heute */
   adjustmentRate: Rate
+}
+
+/**
+ * Produkt einer weiteren Einkunftsquelle; es bestimmt Besteuerung und KV/PV-Pflicht:
+ * - `bav-insurance`: Betriebsrente aus Direktversicherung, Pensionskasse oder Pensionsfonds
+ * - `bav-direct`: Betriebsrente aus Direktzusage oder Unterstützungskasse (Versorgungsbezug)
+ * - `riester`, `avd` (Altersvorsorgedepot), `basis` (Basisrente)
+ * - `private-annuity`: private Rentenversicherung, `life-insurance`: Kapitallebensversicherung
+ * - `other-taxable`, `other-tax-free`: sonstige Einnahmen
+ */
+export type IncomeProduct =
+  | 'bav-insurance'
+  | 'bav-direct'
+  | 'riester'
+  | 'avd'
+  | 'basis'
+  | 'private-annuity'
+  | 'life-insurance'
+  | 'other-taxable'
+  | 'other-tax-free'
+
+/** Einmalzahlung, lebenslange Rente oder Auszahlung über eine feste Zahl von Jahren. */
+export type IncomePayout = 'lump-sum' | 'lifelong' | 'fixed-term'
+
+export interface AdditionalIncome {
+  label: string
+  product: IncomeProduct
+  payout: IncomePayout
+  /** Alter im ersten Zahlungsjahr bzw. im Jahr der Einmalzahlung */
+  startAge: number
+  /** Zahl der Zahlungsjahre bei befristeter Auszahlung */
+  years: number
+  /** Monatsbetrag brutto im ersten Jahr bzw. Betrag der Einmalzahlung */
+  amount: EUR
+  /** jährliche Steigerung laufender Zahlungen ab Beginn; bei `today` zusätzlich zur Inflation */
+  growth: Rate
+  /**
+   * `nominal`: Betrag laut Vertrag im ersten Zahlungsjahr; `today`: in heutiger Kaufkraft, mit der
+   * erwarteten Inflation in einen festen nominalen Betrag umgerechnet
+   */
+  basis: 'nominal' | 'today'
+  /** Summe der eingezahlten Beiträge (private Renten- und Lebensversicherung) */
+  contributions: EUR
+  /** Jahr des Vertragsabschlusses (private Renten- und Lebensversicherung) */
+  contractYear: number
+  /** fondsgebundene Versicherung (Teilfreistellung des Unterschiedsbetrags) */
+  fundLinked: boolean
 }
 
 export type BridgeHealthInsurance =

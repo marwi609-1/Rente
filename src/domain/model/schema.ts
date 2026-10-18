@@ -171,6 +171,43 @@ const statePensionSchema = z
     }
   })
 
+export const INCOME_PRODUCTS = [
+  'bav-insurance',
+  'bav-direct',
+  'riester',
+  'avd',
+  'basis',
+  'private-annuity',
+  'life-insurance',
+  'other-taxable',
+  'other-tax-free',
+] as const
+
+const additionalIncomeSchema = z
+  .object({
+    label: z.string().max(100),
+    product: z.enum(INCOME_PRODUCTS),
+    payout: z.enum(['lump-sum', 'lifelong', 'fixed-term']),
+    startAge: age,
+    years: z.number().int().min(1).max(60),
+    amount: eur,
+    growth: smallRate,
+    basis: z.enum(['nominal', 'today']),
+    contributions: eur,
+    contractYear: z.number().int().min(1950).max(2200),
+    fundLinked: z.boolean(),
+  })
+  .superRefine((income, ctx) => {
+    // § 10 Abs. 1 Nr. 2 Buchst. b EStG: nur lebenslange Leibrente
+    if (income.product === 'basis' && income.payout !== 'lifelong') {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['payout'],
+        message: 'Eine Basisrente wird nur als lebenslange Rente ausgezahlt.',
+      })
+    }
+  })
+
 const healthSchema = z.object({
   bridgePhase: z.discriminatedUnion('type', [
     z.object({ type: z.literal('gkv-voluntary') }),
@@ -371,6 +408,8 @@ export const retirementPlanSchema = z
     savings: savingsSchema,
     spending: spendingSchema,
     statePension: statePensionSchema,
+    // fehlt in Szenarien vor Version 1.04
+    additionalIncome: z.array(additionalIncomeSchema).max(30).default([]),
     health: healthSchema,
     tax: taxSchema,
     market: marketSchema,
@@ -386,6 +425,24 @@ export const retirementPlanSchema = z
           code: 'custom',
           path: ['spending', 'oneOffs', i, 'age'],
           message: 'Einmalausgaben müssen zwischen aktuellem Alter und Planungshorizont liegen.',
+        })
+      }
+    })
+    plan.additionalIncome.forEach((income, i) => {
+      if (income.startAge < currentAge || income.startAge > planningHorizonAge) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['additionalIncome', i, 'startAge'],
+          message: 'Der Beginn muss zwischen aktuellem Alter und Planungshorizont liegen.',
+        })
+      }
+      const payoutYear = plan.household.startYear + income.startAge - currentAge
+      const insurance = income.product === 'private-annuity' || income.product === 'life-insurance'
+      if (insurance && income.contractYear > payoutYear) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['additionalIncome', i, 'contractYear'],
+          message: `Der Vertrag muss spätestens im Jahr der ersten Auszahlung (${payoutYear}) abgeschlossen sein.`,
         })
       }
     })

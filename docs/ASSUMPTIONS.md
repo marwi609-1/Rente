@@ -249,6 +249,60 @@ weniger Steuer- und KV-Abrechnungen gebraucht: im Mittel 2,5 statt 4,8 je Entnah
 wird dadurch rund 40 % schneller. Ergebnisse weichen um Cent-Beträge ab; Pfade, deren
 Rebalancing-Abweichung genau auf dem Band liegt, können dadurch anders umschichten.
 
+## Weitere Einkünfte
+
+**A79 – Erweiterung des Datenmodells.** Auf Wunsch des Nutzers enthält der Plan weitere
+Einkünfte (Betriebsrente, Riester, Altersvorsorgedepot, Basisrente, private Renten- und
+Lebensversicherung, sonstige Einnahmen) als Einmalzahlung, lebenslange oder befristete Rente. Das
+Feld fehlt in Szenarien vor Version 1.04 und wird beim Laden als leere Liste ergänzt.
+
+**A80 – Nominale Vertragsbeträge.** Verträge nennen nominale Beträge; die Eingabe ist daher
+standardmäßig nominal. Beträge in heutiger Kaufkraft werden mit der erwarteten Inflation in einen
+festen nominalen Zahlungsplan umgerechnet, der in allen Pfaden gleich ist. Lebenslange Renten
+laufen wie die gesetzliche Rente bis zum Horizont. Ein Beginn vor dem aktuellen Alter ist nicht
+vorgesehen; laufende Renten werden mit dem aktuellen Alter erfasst, Ertragsanteil und
+Versorgungsfreibetrag beziehen sich dann auf dieses Alter.
+
+**A81 – Konservative Vereinfachungen der Besteuerung.**
+
+- Kapitalzahlungen nach § 22 Nr. 5 EStG (Direktversicherung, Pensionskasse, Pensionsfonds,
+  Riester) werden ohne Fünftelregelung besteuert; ob sie im Einzelfall greift, hängt von Vertrag und
+  Rechtsprechung ab. Die Kleinbetragsrentenabfindung (§ 22 Nr. 5 Satz 13) ist nicht abgebildet.
+- Kapitalabfindungen aus Direktzusage oder Unterstützungskasse: Fünftelregelung (§ 34 Abs. 1 und 2
+  Nr. 4 EStG); Freibeträge mindern zuerst laufende Versorgungsbezüge desselben Jahres.
+- Lebensversicherungen vor 2005 gelten als steuerfrei; die damaligen Voraussetzungen (u. a.
+  mindestens 12 Jahre Laufzeit, 5 Jahre Beitragszahlung) werden als erfüllt angenommen.
+- Kapital- und Ratenzahlungen privater Versicherungen: Ertrag je Zahlung mit dem Anteil
+  `1 − Beiträge / Summe der Zahlungen`; die 12-Jahres-Frist wird nach Kalenderjahren geprüft. Bei
+  fondsgebundenen Verträgen gelten 15 % als steuerfrei, als stamme der Ertrag ganz aus
+  Investmenterträgen.
+- Der hälftige Versicherungsertrag wird nur um einen nach den Depoterträgen verbleibenden Rest des
+  Sparer-Pauschbetrags gemindert.
+- In der Erwerbsphase werden steuerpflichtige Teile mit dem Satz der Zone 4 (42 %) plus Soli und
+  Kirchensteuer besteuert, weil das Erwerbseinkommen nicht modelliert ist.
+- Abgekürzte Leibrenten (§ 55 Abs. 2 EStDV) sind nicht abgebildet: Befristete Zahlungen privater
+  Versicherungen werden nach § 20 Abs. 1 Nr. 6 EStG besteuert (Satz 4: keine lebenslange
+  Rentenzahlung).
+
+**A82 – KV/PV der weiteren Einkünfte.** Betriebsrenten (alle Durchführungswege) sind
+Versorgungsbezüge mit vollem allgemeinem Beitragssatz und Zusatzbeitrag (§ 248 SGB V) und vollem
+PV-Beitrag; in der KVdR gilt die Freigrenze von 1/20 der Bezugsgröße, darüber mindert der gleich
+hohe Freibetrag nur die KV-Grundlage (§ 226 Abs. 2 SGB V, § 57 Abs. 1 SGB XI). Kapitalleistungen
+zählen zehn Jahre lang mit 1/120 je Monat (§ 229 Abs. 1 Satz 3 SGB V), auch bei freiwillig
+Versicherten. Riester- und Altersvorsorgedepot-Leistungen, Basisrenten und private Versicherungen
+sind in der KVdR beitragsfrei. Bei freiwillig Versicherten zählen sie mit dem Zahlbetrag zum
+ermäßigten Satz, Kapitalzahlungen im Jahr der Zahlung (bis zur BBG); Quellen beschreiben teils eine
+Verteilung über zwölf Monate, im Jahresmodell macht das kaum einen Unterschied. Privat fortgeführte
+Teile einer Direktversicherung sind beitragsfrei und als private Rentenversicherung zu erfassen.
+In der Erwerbsphase fallen keine Beiträge an (wie bisher nicht modelliert).
+
+**A83 – Altersvorsorgedepot.** Das Altersvorsorgereformgesetz (Bundestag 27.03.2026, BGBl. I 2026
+Nr. 156) führt das Altersvorsorgedepot ab 2027 ein. Leistungen aus Altersvorsorgeverträgen sind nach
+§ 22 Nr. 5 Satz 1 EStG voll steuerpflichtig und als Leistungen aus Altersvorsorgevermögen keine
+Versorgungsbezüge; das Modell behandelt das Depot daher wie Riester. Auszahlplan mindestens bis 85
+und bis zu 30 % Einmalzahlung zu Beginn sind Hinweise der Eingabe, keine Prüfregeln. Die
+Einzelheiten (BMF-Anwendungsschreiben) standen bei Umsetzung noch aus.
+
 ## Oberfläche und Auswertung
 
 **A60 – Neuberechnung.** Jede Eingabeänderung startet 500 ms nach der letzten Änderung eine neue
