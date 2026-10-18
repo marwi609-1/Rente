@@ -105,3 +105,85 @@ describe('KPI-Karten', () => {
     expect(card(wrapper, 'shortfall').text()).toContain('Euro von heute')
   })
 })
+
+describe('KPI-Karten sichere Entnahme und FIRE-Status', () => {
+  const mountWith = (extras: InstanceType<typeof KpiCards>['$props']['extras']) =>
+    mount(KpiCards, {
+      props: { summary: run.summary, plan: run.plan, real: true, mortalityWeighted: false, extras },
+      global: { plugins: [createAppVuetify()] },
+    })
+  const valueOf = (wrapper: ReturnType<typeof mountWith>, id: string) =>
+    wrapper.get(`[data-testid="kpi-${id}"] [data-testid="kpi-value"]`).text()
+
+  it('zeigt laufende Suchen an', () => {
+    const wrapper = mountWith({ status: 'running', error: null, safeWithdrawal: null, fire: null })
+    expect(valueOf(wrapper, 'safe-withdrawal')).toBe('wird berechnet …')
+    expect(valueOf(wrapper, 'fire')).toBe('wird berechnet …')
+  })
+
+  it('zeigt sichere Entnahme und frühestes Ausstiegsalter', () => {
+    const wrapper = mountWith({
+      status: 'done',
+      error: null,
+      safeWithdrawal: {
+        applicable: true,
+        netConsumption: 61_300,
+        successRate: 0.904,
+        minimumRatio: 0.7,
+        searchPaths: 2_000,
+        fullPaths: 10_000,
+      },
+      fire: {
+        reached: false,
+        retirementAge: 57,
+        successRate: 0.42,
+        earliestAge: 63,
+        earliestSuccessRate: 0.91,
+      },
+    })
+    expect(valueOf(wrapper, 'safe-withdrawal')).toBe(`${formatEuro(61_300)} p. a.`)
+    expect(wrapper.get('[data-testid="kpi-safe-withdrawal"]').text()).toContain(
+      formatPercent(0.904, 1),
+    )
+    expect(valueOf(wrapper, 'fire')).toBe('ab 63 Jahren')
+    expect(wrapper.get('[data-testid="kpi-fire"] [data-testid="kpi-status"]').text()).toContain(
+      'zu früh',
+    )
+  })
+
+  it('erklärt nicht anwendbare und nicht erreichbare Ergebnisse', () => {
+    const wrapper = mountWith({
+      status: 'done',
+      error: null,
+      safeWithdrawal: { applicable: false },
+      fire: {
+        reached: false,
+        retirementAge: 57,
+        successRate: 0.1,
+        earliestAge: null,
+        earliestSuccessRate: null,
+      },
+    })
+    expect(valueOf(wrapper, 'safe-withdrawal')).toBe('–')
+    expect(wrapper.get('[data-testid="kpi-safe-withdrawal"]').text()).toContain(
+      'Nur für feste reale Entnahme',
+    )
+    expect(valueOf(wrapper, 'fire')).toBe('nicht erreichbar')
+  })
+
+  it('meldet einen erreichten FIRE-Status', () => {
+    const wrapper = mountWith({
+      status: 'done',
+      error: null,
+      safeWithdrawal: null,
+      fire: {
+        reached: true,
+        retirementAge: 57,
+        successRate: 0.93,
+        earliestAge: 57,
+        earliestSuccessRate: 0.93,
+      },
+    })
+    expect(valueOf(wrapper, 'fire')).toBe('erreicht')
+  })
+})

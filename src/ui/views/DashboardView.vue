@@ -15,8 +15,26 @@ import { historicalDataNotice } from '@/ui/texts'
 import { formatNumber } from '@/utils/format'
 
 const { plan } = storeToRefs(usePlanStore())
-const { summary, reference, resultPlan, outputReal, mortalityWeighted, stale, status } =
-  storeToRefs(useResultsStore())
+const {
+  summary,
+  reference,
+  resultPlan,
+  outputReal,
+  mortalityWeighted,
+  stale,
+  status,
+  extrasStatus,
+  extrasError,
+  safeWithdrawal,
+  fire,
+} = storeToRefs(useResultsStore())
+
+const extras = computed(() => ({
+  status: extrasStatus.value,
+  error: extrasError.value,
+  safeWithdrawal: safeWithdrawal.value,
+  fire: fire.value,
+}))
 
 const unitLabel = computed(() => (outputReal.value ? 'Euro von heute' : 'nominal'))
 const updating = computed(
@@ -72,6 +90,7 @@ const historicalNotice = computed(() =>
         :plan="resultPlan"
         :real="outputReal"
         :mortality-weighted="mortalityWeighted"
+        :extras="extras"
       />
 
       <v-row class="mt-2">

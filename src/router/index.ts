@@ -31,6 +31,12 @@ export const routes: RouteRecordRaw[] = [
     name: 'monte-carlo',
     component: () => import('@/ui/views/MonteCarloView.vue'),
   },
+  { path: '/heatmap', name: 'heatmap', component: () => import('@/ui/views/HeatmapView.vue') },
+  {
+    path: '/szenarien',
+    name: 'scenarios',
+    component: () => import('@/ui/views/ScenariosView.vue'),
+  },
   {
     path: `/annahmen/:doc(${ASSUMPTION_DOCS.join('|')})?`,
     name: 'assumptions',

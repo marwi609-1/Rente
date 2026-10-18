@@ -17,6 +17,8 @@ const props = defineProps<{
   hint?: string
   /** leeres Feld bedeutet „nicht gesetzt“ */
   optional?: boolean
+  /** zusätzliche Meldungen außerhalb des Plans, z. B. für Analyse-Einstellungen */
+  messages?: string[]
 }>()
 
 const model = defineModel<number | undefined>({ required: true })
@@ -58,7 +60,9 @@ function onBlur(): void {
 }
 
 const errors = computed(() =>
-  parseError.value !== null ? [parseError.value] : messagesFor(props.path),
+  parseError.value !== null
+    ? [parseError.value]
+    : [...messagesFor(props.path), ...(props.messages ?? [])],
 )
 </script>
 

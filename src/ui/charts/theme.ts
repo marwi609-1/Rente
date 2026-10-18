@@ -13,10 +13,26 @@ export interface ChartTheme {
   axis: string
   /** kategoriale Farben in fester Reihenfolge */
   series: readonly string[]
+  /** einfarbige Abstufung für Größen (Heatmap): niedrig → hoch */
+  sequential: readonly string[]
+  /** Beschriftung auf den dunklen bzw. hellen Enden der Abstufung */
+  onSequentialHigh: string
+  onSequentialLow: string
 }
 
 const LIGHT_SERIES = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4'] as const
 const DARK_SERIES = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181'] as const
+
+/** Blau-Abstufung 100–700; hell beginnt nahe der Oberfläche, dunkel umgekehrt. */
+const BLUE_RAMP = [
+  '#cde2fb',
+  '#9ec5f4',
+  '#6da7ec',
+  '#3987e5',
+  '#256abf',
+  '#184f95',
+  '#0d366b',
+] as const
 
 export function chartTheme(dark: boolean, surface: string): ChartTheme {
   return dark
@@ -29,6 +45,9 @@ export function chartTheme(dark: boolean, surface: string): ChartTheme {
         grid: '#2c2c2a',
         axis: '#383835',
         series: DARK_SERIES,
+        sequential: [...BLUE_RAMP].reverse(),
+        onSequentialHigh: '#0b0b0b',
+        onSequentialLow: '#f0efec',
       }
     : {
         dark,
@@ -39,5 +58,8 @@ export function chartTheme(dark: boolean, surface: string): ChartTheme {
         grid: '#e1e0d9',
         axis: '#c3c2b7',
         series: LIGHT_SERIES,
+        sequential: BLUE_RAMP,
+        onSequentialHigh: '#ffffff',
+        onSequentialLow: '#0b0b0b',
       }
 }

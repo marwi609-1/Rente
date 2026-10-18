@@ -342,3 +342,143 @@ export function categoryBarOption(
     })),
   }
 }
+
+export interface HeatmapChartData {
+  /** Beschriftung der Spalten (Aktienquote) */
+  columns: string[]
+  /** Beschriftung der Zeilen (Entnahme), von oben nach unten steigend */
+  rows: string[]
+  rowName: string
+  /** Erfolgsquote `values[zeile][spalte]` in [0, 1] */
+  values: number[][]
+}
+
+/** Heatmap der Erfolgsquote: einfarbige Abstufung, Wert in jeder Zelle. */
+export function heatmapOption(
+  data: HeatmapChartData,
+  theme: ChartTheme,
+  layout: ChartLayout,
+): EChartsOption {
+  const base = baseOption(theme, layout)
+  const cells = data.values.flatMap((row, r) =>
+    row.map((value, c) => ({
+      value: [c, r, value],
+      label: { color: value > 0.55 ? theme.onSequentialHigh : theme.onSequentialLow },
+    })),
+  )
+  return {
+    ...base,
+    legend: { show: false },
+    grid: { ...(base.grid as object), top: 8, bottom: layout.compact ? 56 : 64 },
+    tooltip: {
+      ...(base.tooltip as object),
+      trigger: 'item',
+      formatter: (params: unknown) => {
+        const [c, r, value] = (params as { value: [number, number, number] }).value
+        return [
+          tooltipHeader(`${data.rowName} ${data.rows[r]}, Aktien ${data.columns[c]}`),
+          tooltipRow(null, 'Erfolgsquote', formatPercent(value, 1)),
+        ].join('')
+      },
+    },
+    xAxis: {
+      type: 'category',
+      data: data.columns,
+      name: layout.compact ? undefined : 'Aktienquote',
+      nameLocation: 'middle',
+      nameGap: 28,
+      nameTextStyle: { color: theme.muted },
+      axisLine: { lineStyle: { color: theme.axis } },
+      axisTick: { show: false },
+      axisLabel: { color: theme.muted, interval: layout.compact ? 1 : 0 },
+      splitArea: { show: false },
+    },
+    yAxis: {
+      type: 'category',
+      data: data.rows,
+      inverse: true,
+      axisLine: { lineStyle: { color: theme.axis } },
+      axisTick: { show: false },
+      axisLabel: { color: theme.muted },
+    },
+    visualMap: {
+      type: 'continuous',
+      min: 0,
+      max: 1,
+      calculable: false,
+      orient: 'horizontal',
+      left: 'center',
+      bottom: 0,
+      itemWidth: 12,
+      itemHeight: layout.compact ? 140 : 200,
+      text: ['100 %', '0 %'],
+      textStyle: { color: theme.inkSecondary },
+      inRange: { color: [...theme.sequential] },
+    },
+    series: [
+      {
+        type: 'heatmap',
+        name: 'Erfolgsquote',
+        data: cells,
+        // 2 px Oberflächenfarbe trennen die Zellen
+        itemStyle: { borderColor: theme.surface, borderWidth: 2 },
+        label: {
+          show: true,
+          fontSize: layout.compact ? 9 : 11,
+          formatter: (params: unknown) => {
+            const value = (params as { value: [number, number, number] }).value[2]
+            return layout.compact ? formatNumber(value * 100) : formatPercent(value, 0)
+          },
+        },
+        emphasis: { itemStyle: { borderColor: theme.ink, borderWidth: 1 } },
+      },
+    ],
+  }
+}
+
+export interface OverlayData {
+  ages: number[]
+  series: { name: string; values: (number | null)[] }[]
+}
+
+/** Überlagerte Linien je Szenario (Median-Pfade), Beträge in Euro. */
+export function overlayLineOption(
+  data: OverlayData,
+  theme: ChartTheme,
+  layout: ChartLayout,
+): EChartsOption {
+  const base = baseOption(theme, layout)
+  return {
+    ...base,
+    grid: { ...(base.grid as object), right: layout.compact ? 8 : 24 },
+    tooltip: {
+      ...(base.tooltip as object),
+      trigger: 'axis',
+      axisPointer: { type: 'line', lineStyle: { color: theme.muted, width: 1 } },
+      formatter: (params: unknown) => {
+        const t = (params as { dataIndex: number }[])[0]?.dataIndex ?? 0
+        return [
+          tooltipHeader(`Alter ${data.ages[t]}`),
+          ...data.series.map((s, k) =>
+            tooltipRow(
+              theme.series[k],
+              s.name,
+              s.values[t] === null ? '–' : formatEuro(s.values[t]!),
+            ),
+          ),
+        ].join('')
+      },
+    },
+    xAxis: { ...ageAxis(data.ages, theme, layout), boundaryGap: false },
+    yAxis: valueAxis(theme, euroAxisLabel(layout)),
+    series: data.series.map((s, k) => ({
+      type: 'line',
+      name: s.name,
+      data: s.values,
+      symbol: 'none',
+      connectNulls: false,
+      lineStyle: { width: 2, color: theme.series[k], cap: 'round', join: 'round' },
+      itemStyle: { color: theme.series[k] },
+    })),
+  }
+}

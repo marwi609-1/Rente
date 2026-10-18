@@ -143,8 +143,8 @@ Läufe reproduzierbar bleiben.
 - Der Expected Shortfall mittelt die ⌈0,1 · N⌉ niedrigsten realen Endvermögen.
 - Die Portfolio-CAGR rechnet nur über Jahre mit investiertem Kapital.
 
-Die sterblichkeitsgewichtete Sicht ist seit M3 umgesetzt; sichere Entnahme, PWR und FIRE-Status
-folgen mit M6.
+Die sterblichkeitsgewichtete Sicht ist seit M3 umgesetzt, sichere Entnahme, PWR und FIRE-Status
+seit M6 (A67–A73).
 
 **A30 – Worker und Pakete.** Pool mit `min(4, Kerne − 1)` Workern, Pakete zu 250 Pfaden. Ein Abbruch
 verwirft laufende Pakete und vergibt keine neuen; ein bereits gestartetes Paket rechnet im Worker
@@ -264,9 +264,69 @@ Verteilung würde sonst durch wenige sehr große Endvermögen gestaucht. Größe
 den Horizont erleben, und Pfade ohne Erschöpfung stehen als Zahl im Untertitel. Beim festen
 Horizont entfällt das Sterbealter.
 
-**A66 – Ansichten in M5.** Heatmap und Szenarien (Spezifikation 12.1, Punkte 4 und 5) sowie das
-PWR-Histogramm und die Kennzahlen sichere Entnahme und FIRE-Status gehören zu M6 und fehlen bis
-dahin vollständig, statt als leere Hüllen angelegt zu sein.
+**A66 – Umfang der Ansichten.** Seit M6 sind alle Ansichten aus Abschnitt 12.1 umgesetzt.
+
+## Suchen, Heatmap und PWR
+
+**A67 – Mindestkonsum bei variiertem Netto-Konsum.** Sichere Entnahme und Heatmap variieren den
+Netto-Konsum. Der Mindestkonsum wird dabei im Verhältnis des Plans mitgeführt (Default 70 %). Bei
+festem Mindestkonsum wäre jede Konsumhöhe darunter per Definition ein Fehlschlag: Die Erfolgsquote
+fiele unterhalb des Mindestkonsums auf 0 und stiege an ihm sprunghaft an, die Suche nach dem
+höchsten tragfähigen Konsum und die Heatmap-Spalten verlören ihre Aussage.
+
+**A68 – Sichere Entnahme nur bei konsumbestimmten Regeln.** Bei Prozent vom Depot, VPW und
+Guyton-Klinger bestimmt der Depotwert den Konsum, `netConsumption` wirkt nicht. Dort wird keine
+sichere Entnahme ausgewiesen; die Heatmap zeigt den Zusammenhang von Entnahmerate und Erfolgsquote
+mit fester realer Entnahme.
+
+**A69 – Suchgrößen.** Sichere Entnahme im 100-€-Raster. Die Suchen setzen voraus, dass die
+Erfolgsquote mit steigendem Konsum fällt und mit späterem Ruhestand steigt; mit denselben
+Renditepfaden trifft das in den Tests zu (monotone Heatmap-Spalten, monotone sichere Entnahme über
+die Zielquote). Grundlage beider Suchen ist die Erfolgsquote des festen Horizonts.
+
+**A70 – FIRE-Status.** Gesucht wird nur nach späteren Ausstiegsaltern bis zum Horizont, ohne andere
+Eingaben anzupassen (Sparrate, Rentenansprüche, Glidepath-Stützstellen bleiben gleich). Die
+Hochrechnung der Rente folgt dem jeweiligen Ausstiegsalter (Spezifikation 10.3).
+
+**A71 – Heatmap.** Jede Zelle verwendet eine feste Allokation und feste reale Entnahme, unabhängig von
+Strategie und Entnahmeregel des Plans; Cash bleibt beim Anteil der Strategie (Bucket: 0 %). Die
+Entnahmerate bezieht sich auf den heutigen Depotwert, nicht auf den Wert bei Ruhestandsbeginn,
+der je Pfad verschieden ist.
+
+**A72 – Perfect Withdrawal Rate.** „Konstante reale Entnahme“ ist der Netto-Konsum der festen realen
+Entnahme, also einschließlich des aus der Netto-Rente bestrittenen Teils; Steuern, KV, Sparphase,
+Ausgabenprofil und Einmalausgaben bleiben wie im Plan. „Genau aufgebraucht“ heißt: Endvermögen
+minus ungedeckter Konsum ist null; so bleibt die Gleichung auch jenseits der Erschöpfung stetig.
+Berechnet wird auf Knopfdruck über alle Pfade des Laufs.
+
+**A73 – Rechenaufwand.** Sichere Entnahme und FIRE-Status laufen nach jedem Hauptlauf automatisch im
+Hintergrund und werden mit der nächsten Eingabe abgebrochen; Heatmap und PWR nur auf Knopfdruck.
+Eine Eingabeänderung bricht sie ab, fertige Ergebnisse bleiben als veraltet markiert sichtbar.
+
+## Szenarien
+
+**A74 – Vorlagen.** „Basis“, „Pessimistisch“ und „Optimistisch“ sind feste Vorlagen mit dem
+aktuellen Startjahr. Sie lassen sich laden, duplizieren, exportieren und vergleichen, aber nicht
+löschen; Änderungen werden als eigenes Szenario gespeichert. „Pessimistisch“ ändert nur die
+genannten Werte (Aktien μ 6 %, σ 18 %, Student-t ν = 5, Inflation μ 3 %), die Volatilität der
+Inflation bleibt bei 1,5 %; „Optimistisch“ setzt Aktien μ 9 % und Inflation μ 2 % (wie im
+Default).
+
+**A75 – Speicherort.** Szenarien liegen nur im Browser (IndexedDB) und sind an Gerät und Browser
+gebunden; der Arbeitsstand der Eingabe selbst wird nicht automatisch gespeichert. Gespeicherte Pläne
+werden beim Laden erneut validiert.
+
+**A76 – Vergleich mit gemeinsamem Seed.** Alle verglichenen Szenarien laufen mit dem Seed des
+zuerst ausgewählten (Common Random Numbers); ihre Pfadzahl und alle anderen Eingaben bleiben. Die
+Vergleichstabelle zeigt die Kennzahlen des Hauptlaufs, nicht sichere Entnahme und FIRE-Status (die
+Suchen würden den Vergleich vervielfachen).
+
+**A77 – Import des Ursprungsformats (offen).** Die Spezifikation verlangt eine Migration von
+Version 1 (Ursprungsformat mit `yearlyWithdrawal`, `taxRate` usw.), getestet mit dem
+Ursprungs-Default-JSON. Dieses Format liegt nicht vor; ein erfundenes v1-Schema würde die Regel
+verletzen, keine Daten zu erfinden. Auf Entscheidung des Nutzers ist die Migration zurückgestellt:
+Dateien mit `schemaVersion` 1 werden mit einer klaren Meldung abgelehnt. Migration und Test folgen,
+sobald das Ursprungs-JSON bereitsteht.
 
 ## Steuern
 

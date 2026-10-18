@@ -5,7 +5,7 @@ import { h } from 'vue'
 import { VApp } from 'vuetify/components'
 
 import { createAppRouter } from '@/router'
-import { setSimulationBackendFactory } from '@/stores/results'
+import { setSimulationBackendFactory } from '@/workers/backends'
 import { createAppVuetify } from '@/ui/vuetify'
 import { pendingBackend } from './backends'
 

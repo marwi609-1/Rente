@@ -3,13 +3,15 @@ import { defineStore } from 'pinia'
 
 import { defaultEngineContext } from '@/data/engineContext'
 import { runDeterministic } from '@/domain/engine/deterministic'
+import type { FireResult, SafeWithdrawalResult } from '@/domain/engine/search'
 import type { MonteCarloSummary } from '@/domain/engine/summary'
 import type { YearResult } from '@/domain/engine/types'
 import type { RetirementPlan } from '@/domain/model/types'
 import { validatePlan } from '@/domain/model/validation'
-import { createWorkerPool } from '@/workers/pool'
-import { runMonteCarlo, type SimulationBackend } from '@/workers/runner'
+import { simulationBackends } from '@/workers/backends'
+import { runFireStatus, runMonteCarlo, runSafeWithdrawal } from '@/workers/runner'
 import { usePlanStore } from './plan'
+import { simulationKey, snapshot } from './planKey'
 
 /** Wartezeit nach der letzten Eingabe, bevor die Berechnung startet (Spezifikation M5). */
 export const RECALC_DEBOUNCE_MS = 500
@@ -27,30 +29,25 @@ export type RunStatus =
   | 'invalid'
   | 'error'
 
-let backendFactory: () => readonly SimulationBackend[] = () => createWorkerPool().backends
-
-/** Ersetzt die Simulations-Backends (Tests); wirkt für Stores, die danach entstehen. */
-export function setSimulationBackendFactory(factory: () => readonly SimulationBackend[]): void {
-  backendFactory = factory
-}
-
-/** Schlüssel der rechenrelevanten Eingaben; die Ausgabeeinheit ändert nur die Darstellung. */
-function simulationKey(plan: RetirementPlan): string {
-  return JSON.stringify({ ...plan, simulation: { ...plan.simulation, outputReal: null } })
-}
+/** Zustand der nachgelagerten Suchen (sichere Entnahme, FIRE-Status). */
+export type ExtrasStatus = 'idle' | 'running' | 'done' | 'aborted' | 'error'
 
 function isAbort(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError'
 }
 
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
 /**
  * Ergebnisse des aktuellen Plans: startet die Monte-Carlo-Simulation im Worker automatisch nach
  * jeder Eingabeänderung (mit Wartezeit), bricht veraltete Läufe ab und hält den deterministischen
- * Referenzpfad. Rechnet nicht selbst, sondern orchestriert Domäne und Worker.
+ * Referenzpfad. Danach folgen im Hintergrund die Suchen nach sicherer Entnahme und FIRE-Alter.
+ * Rechnet nicht selbst, sondern orchestriert Domäne und Worker.
  */
 export const useResultsStore = defineStore('results', () => {
   const planStore = usePlanStore()
-  let backends: readonly SimulationBackend[] | null = null
 
   const status = ref<RunStatus>('idle')
   const progress = ref({ completedPaths: 0, totalPaths: 0 })
@@ -62,6 +59,11 @@ export const useResultsStore = defineStore('results', () => {
   const resultPlan = shallowRef<RetirementPlan | null>(null)
   /** Sicht: sterblichkeitsgewichtet statt fester Horizont */
   const mortalityWeighted = ref(false)
+
+  const extrasStatus = ref<ExtrasStatus>('idle')
+  const extrasError = ref<string | null>(null)
+  const safeWithdrawal = shallowRef<SafeWithdrawalResult | null>(null)
+  const fire = shallowRef<FireResult | null>(null)
 
   const outputReal = computed({
     get: () => planStore.plan.simulation.outputReal,
@@ -86,11 +88,33 @@ export const useResultsStore = defineStore('results', () => {
     controller = null
   }
 
+  /** Sichere Entnahme und FIRE-Status zum gerade fertigen Lauf. */
+  async function runExtras(plan: RetirementPlan, result: MonteCarloSummary, id: number) {
+    const signal = controller?.signal
+    extrasStatus.value = 'running'
+    extrasError.value = null
+    safeWithdrawal.value = null
+    fire.value = null
+    try {
+      const backends = simulationBackends()
+      const withdrawal = await runSafeWithdrawal(plan, backends, { signal })
+      if (id !== runId) return
+      safeWithdrawal.value = withdrawal
+      const fireResult = await runFireStatus(plan, result.successRate, backends, { signal })
+      if (id !== runId) return
+      fire.value = fireResult
+      extrasStatus.value = 'done'
+    } catch (e) {
+      if (id !== runId) return
+      extrasStatus.value = isAbort(e) ? 'aborted' : 'error'
+      if (!isAbort(e)) extrasError.value = messageOf(e)
+    }
+  }
+
   async function run(): Promise<void> {
     stopRunning()
     const id = ++runId
-    // Momentaufnahme ohne reaktive Hülle, damit sie an die Worker übertragen werden kann
-    const validation = validatePlan(JSON.parse(JSON.stringify(planStore.plan)))
+    const validation = validatePlan(snapshot(planStore.plan))
     if (!validation.ok) {
       status.value = 'invalid'
       return
@@ -103,8 +127,7 @@ export const useResultsStore = defineStore('results', () => {
     progress.value = { completedPaths: 0, totalPaths: 0 }
     try {
       const rows = runDeterministic(plan, defaultEngineContext)
-      backends ??= backendFactory()
-      const result = await runMonteCarlo(plan, backends, {
+      const result = await runMonteCarlo(plan, simulationBackends(), {
         signal: current.signal,
         onProgress: (p) => {
           if (id === runId) progress.value = p
@@ -115,23 +138,27 @@ export const useResultsStore = defineStore('results', () => {
       reference.value = rows
       resultPlan.value = plan
       status.value = 'done'
+      void runExtras(plan, result, id)
     } catch (e) {
       if (id !== runId) return
       if (isAbort(e)) {
         status.value = 'aborted'
       } else {
         status.value = 'error'
-        error.value = e instanceof Error ? e.message : String(e)
+        error.value = messageOf(e)
       }
-    } finally {
-      if (controller === current) controller = null
     }
+  }
+
+  function markExtrasStopped(): void {
+    if (extrasStatus.value === 'running') extrasStatus.value = 'aborted'
   }
 
   /** Plant eine Berechnung nach der Wartezeit; ungültige Pläne werden sofort gemeldet. */
   function schedule(): void {
     stopRunning()
     runId++
+    markExtrasStopped()
     if (!planStore.validation.ok) {
       status.value = 'invalid'
       return
@@ -140,12 +167,14 @@ export const useResultsStore = defineStore('results', () => {
     timer = setTimeout(() => void run(), RECALC_DEBOUNCE_MS)
   }
 
-  /** Bricht eine geplante oder laufende Berechnung ab. */
+  /** Bricht eine geplante oder laufende Berechnung samt Suchen ab. */
   function cancel(): void {
-    if (status.value !== 'running' && status.value !== 'scheduled') return
+    const active = status.value === 'running' || status.value === 'scheduled'
+    if (!active && extrasStatus.value !== 'running') return
     stopRunning()
     runId++
-    status.value = 'aborted'
+    markExtrasStopped()
+    if (active) status.value = 'aborted'
   }
 
   watch(() => simulationKey(planStore.plan), schedule, { immediate: true })
@@ -160,6 +189,10 @@ export const useResultsStore = defineStore('results', () => {
     stale,
     mortalityWeighted,
     outputReal,
+    extrasStatus,
+    extrasError,
+    safeWithdrawal,
+    fire,
     run,
     cancel,
   }

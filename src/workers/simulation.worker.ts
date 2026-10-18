@@ -11,6 +11,11 @@ const api = {
     return transfer(block, blockBuffers(block))
   },
   summarize: simulationTasks.summarize,
+  countSuccess: simulationTasks.countSuccess,
+  perfectWithdrawal(plan: RetirementPlan, start: number, end: number): Float64Array {
+    const rates = simulationTasks.perfectWithdrawal(plan, start, end)
+    return transfer(rates, [rates.buffer as ArrayBuffer])
+  },
 }
 
 export type SimulationWorkerApi = typeof api

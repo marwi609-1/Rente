@@ -1,9 +1,11 @@
+import type { HeatmapResult } from '@/domain/engine/heatmap'
 import type { Histogram } from '@/domain/engine/histogram'
 import type { MonteCarloSummary } from '@/domain/engine/summary'
 import type { YearResult } from '@/domain/engine/types'
 import type { RetirementPlan } from '@/domain/model/types'
 import { allocationPolicy } from '@/domain/strategy/allocation'
-import { formatCompact } from '@/utils/format'
+import { formatCompact, formatEuro, formatPercent } from '@/utils/format'
+import type { HeatmapChartData, OverlayData } from './options'
 
 /**
  * Aufbereitung der Ergebnisse für die Diagramme: Auswahl real/nominal, Zuordnung der Reihen und
@@ -181,4 +183,39 @@ export function histogramData(histogram: Histogram, seriesName: string): Categor
     counts.push(histogram.overflow)
   }
   return { labels, series: [{ name: seriesName, values: counts }] }
+}
+
+/** Heatmap-Ergebnis mit Beschriftungen für Diagramm und Tabelle. */
+export function heatmapChartData(result: HeatmapResult): HeatmapChartData {
+  const rate = result.config.mode === 'rate'
+  return {
+    columns: result.equity.map((q) => formatPercent(q, 0)),
+    rows: result.rows.map((r) => (rate ? formatPercent(r, 1) : formatEuro(r))),
+    rowName: rate ? 'Entnahmerate' : 'Netto-Konsum',
+    values: result.success,
+  }
+}
+
+/**
+ * Median-Pfade mehrerer Szenarien auf einer gemeinsamen Altersachse; Alter außerhalb eines
+ * Szenarios bleiben leer.
+ */
+export function overlayData(
+  scenarios: readonly { name: string; summary: MonteCarloSummary }[],
+  real: boolean,
+): OverlayData {
+  const ages = [...new Set(scenarios.flatMap((s) => s.summary.ages))].sort((a, b) => a - b)
+  return {
+    ages,
+    series: scenarios.map(({ name, summary }) => {
+      const median = summary.bands[real ? 'totalReal' : 'total'][summary.percentiles.indexOf(50)]
+      return {
+        name,
+        values: ages.map((age) => {
+          const t = age - summary.ages[0]
+          return t >= 0 && t < median.length ? median[t] : null
+        }),
+      }
+    }),
+  }
 }

@@ -17,6 +17,14 @@ defineProps<{ kpi: KpiCardModel }>()
     </v-card-item>
     <v-card-text>
       <div class="kpi-value text-h5 font-weight-medium" data-testid="kpi-value">
+        <v-progress-circular
+          v-if="kpi.pending"
+          indeterminate
+          size="18"
+          width="2"
+          color="primary"
+          class="me-2"
+        />
         {{ kpi.value }}
       </div>
       <div class="text-caption text-medium-emphasis mb-2" data-testid="kpi-caption">

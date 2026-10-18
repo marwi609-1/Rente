@@ -104,6 +104,12 @@ Für den Pflegeversicherungssatz 2026 gibt es keine eigene Verordnung; dass der 
 unverändert gilt, bestätigen die Übersicht des vdek „Änderungen Gesundheitswesen 2026“ und die
 Einordnung von sozialversicherung-kompetent.de.
 
+## Szenario-Vorlagen
+
+Die Marktannahmen der Vorlagen „Pessimistisch“ und „Optimistisch“ stammen aus der Spezifikation
+(Abschnitt 12.3), nicht aus einer externen Quelle. Vorbelegungen beim Wechsel einer Variante sind
+in `ASSUMPTIONS.md` (A58) beschrieben. Weitere Datenquellen verwendet die App nicht.
+
 ## Sterbetafeln – `src/data/mortality-de.json`
 
 | Angabe              | Wert                                                                                                                                                           |

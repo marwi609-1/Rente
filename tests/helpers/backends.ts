@@ -2,7 +2,7 @@ import type { PathBlock } from '@/domain/engine/monteCarlo'
 import type { SimulationBackend } from '@/workers/runner'
 import { simulationTasks } from '@/workers/tasks'
 
-/** Backend im selben Prozess; zählt die angeforderten Pakete. */
+/** Backend im selben Prozess; zählt die angeforderten Simulationspakete. */
 export function inProcessBackend() {
   const calls: [number, number][] = []
   const backend: SimulationBackend = {
@@ -13,6 +13,12 @@ export function inProcessBackend() {
     async summarize(plan, blocks) {
       return simulationTasks.summarize(plan, blocks)
     },
+    async countSuccess(plan, start, end) {
+      return simulationTasks.countSuccess(plan, start, end)
+    },
+    async perfectWithdrawal(plan, start, end) {
+      return simulationTasks.perfectWithdrawal(plan, start, end)
+    },
   }
   return { backend, calls }
 }
@@ -22,5 +28,7 @@ export function pendingBackend(): SimulationBackend {
   return {
     simulateBlock: () => new Promise<PathBlock>(() => {}),
     summarize: () => new Promise(() => {}),
+    countSuccess: () => new Promise(() => {}),
+    perfectWithdrawal: () => new Promise(() => {}),
   }
 }

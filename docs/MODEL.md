@@ -1,8 +1,9 @@
 # Modell und Formeln
 
-Stand: Meilenstein 5 (deterministische Engine, Zufallszahlen, Marktmodelle, Monte Carlo, Steuern,
+Stand: Meilenstein 6 (deterministische Engine, Zufallszahlen, Marktmodelle, Monte Carlo, Steuern,
 gesetzliche Rente, Kranken- und Pflegeversicherung, Langlebigkeit, Strategien und Entnahmeregeln,
-Auswertungen für Dashboard und Diagramme).
+Auswertungen für Dashboard und Diagramme, sichere Entnahme, FIRE-Status, Heatmap, Perfect
+Withdrawal Rate, Szenarien).
 Rechtsstand und Quellen: `DATA_SOURCES.md`.
 
 ## Zeitachse und Einheiten
@@ -348,6 +349,69 @@ Jahresende und der Preisindex `I_t`; je Pfad außerdem Alter des ersten Fehljahr
 - **Endvermögensverteilung:** Histogramm mit höchstens 30 gleich breiten Klassen „runder“ Breite
   (1, 2, 2,5 oder 5 · 10^k) vom Minimum bis zum 99. Perzentil; größere Werte bilden eine
   Überlaufklasse.
+
+## Suchen, Heatmap und Perfect Withdrawal Rate
+
+Alle Verfahren rechnen Abwandlungen des Plans mit demselben Seed und denselben Pfadindizes, also
+denselben Renditepfaden (Common Random Numbers). Unterschiede zwischen zwei Varianten stammen damit
+nur aus der Abwandlung, nicht aus dem Zufall. Erfolgsquote ist jeweils die des festen Horizonts.
+
+### Abwandlungen
+
+- **Netto-Konsum `c`:** `netConsumption = c`, `minimumAcceptableConsumption = ρ · c` mit dem
+  Verhältnis `ρ` = Mindestkonsum / Netto-Konsum des Plans (bei Netto-Konsum 0: `ρ = 1`).
+- **Ruhestandsalter `a`:** `retirementAge = a`, alles andere unverändert.
+- **Aktienquote `q`:** feste Allokation `(q, 1 − q − c', c')` mit `c' = min(Cash der Strategie,
+1 − q)`; beim Bucket `c' = 0`.
+
+### Sichere Entnahme
+
+Für Regeln, deren Konsumhöhe der Netto-Konsum bestimmt (`fixed-real`, `floor-ceiling`). Gesucht ist
+das größte `k` mit `p(100 € · k) ≥ p*` (Ziel-Erfolgsquote):
+
+1. Obere Schranke: ab `k = ⌈netConsumption / 100⌉` verdoppeln, bis `p` auf 2.000 Pfaden unter `p*`
+   fällt (`k = 0` ist ohne Konsum stets erfüllt).
+2. Bisektion über ganze `k` auf 2.000 Pfaden.
+3. Bestätigung mit der vollen Pfadzahl; verfehlt `k` dort das Ziel, Bisektion über `[0, k]` mit der
+   vollen Pfadzahl. Ausgewiesen wird `p` mit voller Pfadzahl.
+
+Bei historischen Sequenzen und Plänen mit weniger als 2.000 Pfaden sucht das Verfahren direkt mit
+allen Pfaden.
+
+### FIRE-Status
+
+`p(R)` mit voller Pfadzahl stammt aus dem Hauptlauf. Ist `p(R) ≥ p*`: „erreicht“. Sonst Bisektion
+über ganze Alter in `(R, H]` auf 2.000 Pfaden nach dem kleinsten Alter mit `p ≥ p*`, anschließend
+Bestätigung mit voller Pfadzahl, bei Verfehlen schrittweise ein Jahr später. Erfüllt auch `a = H`
+das Ziel nicht, ist kein Ausstieg bis zum Horizont möglich.
+
+### Heatmap
+
+Spalten: Aktienquoten 0, 10, …, 100 %. Zeilen: Entnahmerate `r` (Netto-Konsum `r · totalValue`)
+oder Netto-Konsum von–bis in festen Schritten, höchstens 25 Zeilen. Je Zelle feste reale Entnahme
+und die Abwandlungen Netto-Konsum und Aktienquote; Erfolgsquote auf 2.000 Pfaden.
+
+### Perfect Withdrawal Rate
+
+Je Pfad die konstante reale Entnahme `c` (feste reale Entnahme, Mindestkonsum 0, Ausgabenprofil
+und Einmalausgaben wie im Plan), mit der das Depot genau zum Horizont aufgebraucht ist. Gelöst wird
+
+```
+g(c) = realer Depotwert am Ende des Horizontjahres − Σ_t max(0, c · f(a_t) − K̂_t / I_t) = 0
+```
+
+(Summe über die Ruhestandsjahre). `g` fällt in `c` und ist stetig bis auf die Rundungssprünge der
+Steuer. Verfahren: obere Schranke durch Verdoppeln ab `max(netConsumption, 1.000 €)`, dann
+Illinois-Verfahren (Regula falsi mit Halbierung des festsitzenden Endpunkts) bis `|g| < 0,50 €`
+oder Intervallbreite < 0,50 €. Ausgewiesen werden Perzentile und Histogramm, die Rate relativ zum
+heutigen Depotwert.
+
+## Szenarien
+
+Gespeichert wird in IndexedDB (Datenbank `ruhestandsplaner`, Objektspeicher `scenarios`, Schlüssel
+`id`). Ein Eintrag enthält Name, Plan und Änderungszeitpunkt. Der JSON-Export ist der Plan selbst
+mit `schemaVersion: 2`; beim Import wird er mit dem zod-Schema geprüft. Der Vergleich rechnet bis
+zu drei Szenarien nacheinander mit dem Seed des ersten.
 
 ## Geschlossene Formeln (Testanker)
 

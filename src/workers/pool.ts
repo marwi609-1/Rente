@@ -28,6 +28,8 @@ export function createWorkerPool(size = defaultPoolSize()): WorkerPool {
       // Blöcke ohne Kopie an den auswertenden Worker übergeben
       summarize: (plan, blocks) =>
         remote.summarize(plan, transfer(blocks, blocks.flatMap(blockBuffers))),
+      countSuccess: (plan, start, end) => remote.countSuccess(plan, start, end),
+      perfectWithdrawal: (plan, start, end) => remote.perfectWithdrawal(plan, start, end),
     }
   })
   return {

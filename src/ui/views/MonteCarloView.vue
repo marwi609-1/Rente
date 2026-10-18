@@ -7,6 +7,7 @@ import ChartCard from '@/ui/charts/ChartCard.vue'
 import { ageDistributionData, histogramData, wealthFanData } from '@/ui/charts/data'
 import { categoryBarOption, fanChartOption } from '@/ui/charts/options'
 import { categoryTable, fanTable } from '@/ui/charts/tables'
+import PwrSection from '@/ui/components/PwrSection.vue'
 import ResultsPlaceholder from '@/ui/components/ResultsPlaceholder.vue'
 import { marketModelLabels } from '@/ui/labels'
 import { formatNumber, formatPercent } from '@/utils/format'
@@ -90,6 +91,9 @@ const ageNote = computed(() => {
           :table="() => categoryTable(terminal!, 'Endvermögen')"
           test-id="chart-terminal"
         />
+      </v-col>
+      <v-col cols="12">
+        <PwrSection />
       </v-col>
     </v-row>
   </v-container>

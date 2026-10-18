@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import 'fake-indexeddb/auto'
 import { afterEach, describe, expect, it } from 'vitest'
 import { flushPromises, type VueWrapper } from '@vue/test-utils'
 
@@ -39,6 +40,8 @@ describe('App-Shell', () => {
     for (const [path, heading] of [
       ['/eingaben', 'Eingaben'],
       ['/monte-carlo', 'Monte Carlo'],
+      ['/heatmap', 'Heatmap'],
+      ['/szenarien', 'Szenarien'],
       ['/annahmen', 'Annahmen'],
     ]) {
       await router.push(path)

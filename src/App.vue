@@ -4,6 +4,8 @@ import { useDisplay, useTheme } from 'vuetify'
 import {
   mdiBookOpenVariant,
   mdiChartBellCurve,
+  mdiFolderMultipleOutline,
+  mdiGrid,
   mdiTune,
   mdiViewDashboard,
   mdiWeatherNight,
@@ -22,6 +24,8 @@ const navigation = [
   { title: 'Dashboard', icon: mdiViewDashboard, to: { name: 'dashboard' } },
   { title: 'Eingaben', icon: mdiTune, to: { name: 'inputs' } },
   { title: 'Monte Carlo', icon: mdiChartBellCurve, to: { name: 'monte-carlo' } },
+  { title: 'Heatmap', icon: mdiGrid, to: { name: 'heatmap' } },
+  { title: 'Szenarien', icon: mdiFolderMultipleOutline, to: { name: 'scenarios' } },
   { title: 'Annahmen', icon: mdiBookOpenVariant, to: { name: 'assumptions' } },
 ]
 

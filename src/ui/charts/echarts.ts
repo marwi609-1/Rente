@@ -1,22 +1,25 @@
 import { use } from 'echarts/core'
-import { BarChart, LineChart } from 'echarts/charts'
+import { BarChart, HeatmapChart, LineChart } from 'echarts/charts'
 import {
   AriaComponent,
   GridComponent,
   LegendComponent,
   MarkLineComponent,
   TooltipComponent,
+  VisualMapContinuousComponent,
 } from 'echarts/components'
 import { SVGRenderer } from 'echarts/renderers'
 
 // Nur die verwendeten Module registrieren (Tree-Shaking, Spezifikation Abschnitt 3).
 use([
   BarChart,
+  HeatmapChart,
   LineChart,
   AriaComponent,
   GridComponent,
   LegendComponent,
   MarkLineComponent,
   TooltipComponent,
+  VisualMapContinuousComponent,
   SVGRenderer,
 ])

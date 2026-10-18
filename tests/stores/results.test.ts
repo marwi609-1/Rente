@@ -3,17 +3,25 @@ import { createPinia, setActivePinia } from 'pinia'
 import { nextTick } from 'vue'
 
 import { usePlanStore } from '@/stores/plan'
-import { RECALC_DEBOUNCE_MS, setSimulationBackendFactory, useResultsStore } from '@/stores/results'
+import { RECALC_DEBOUNCE_MS, useResultsStore } from '@/stores/results'
+import { setSimulationBackendFactory } from '@/workers/backends'
 import type { SimulationBackend } from '@/workers/runner'
 import { inProcessBackend, pendingBackend } from '../helpers/backends'
 
-/** Kleiner, schneller Plan: 1.000 Pfade, kurzer Horizont. */
-function setup(backend = inProcessBackend()) {
+/**
+ * Kleiner, schneller Plan: 1.000 Pfade, kurzer Horizont. Mit `cheapExtras` sind die nachgelagerten
+ * Suchen trivial (Entnahme in Prozent vom Depot, Ziel beim gewählten Alter erreicht).
+ */
+function setup(backend = inProcessBackend(), cheapExtras = true) {
   setSimulationBackendFactory(() => [backend.backend])
   setActivePinia(createPinia())
   const planStore = usePlanStore()
   planStore.plan.simulation.paths = 1_000
   planStore.plan.household.planningHorizonAge = 70
+  if (cheapExtras) {
+    planStore.plan.spending.rule = { type: 'percent-of-portfolio', rate: 0.04 }
+    planStore.plan.spending.minimumAcceptableConsumption = 20_000
+  }
   return { planStore, results: useResultsStore(), calls: backend.calls }
 }
 
@@ -56,6 +64,8 @@ describe('Ergebnis-Store', () => {
       backend: {
         simulateBlock: (...args) => active.simulateBlock(...args),
         summarize: (...args) => active.summarize(...args),
+        countSuccess: (...args) => active.countSuccess(...args),
+        perfectWithdrawal: (...args) => active.perfectWithdrawal(...args),
       },
       calls: fast.calls,
     })
@@ -115,6 +125,8 @@ describe('Ergebnis-Store', () => {
       backend: {
         simulateBlock: () => Promise.reject(new Error('Worker abgestürzt')),
         summarize: () => Promise.reject(new Error('unerreichbar')),
+        countSuccess: () => Promise.reject(new Error('unerreichbar')),
+        perfectWithdrawal: () => Promise.reject(new Error('unerreichbar')),
       },
       calls: [],
     })
@@ -122,4 +134,24 @@ describe('Ergebnis-Store', () => {
     await vi.waitFor(() => expect(results.status).toBe('error'))
     expect(results.error).toBe('Worker abgestürzt')
   })
+
+  it('berechnet danach sichere Entnahme und FIRE-Status im Hintergrund', async () => {
+    const { results } = setup(inProcessBackend(), false)
+    await vi.advanceTimersByTimeAsync(RECALC_DEBOUNCE_MS)
+    await vi.waitFor(() => expect(results.status).toBe('done'))
+    await vi.waitFor(() => expect(results.extrasStatus).toBe('done'), { timeout: 60_000 })
+    const withdrawal = results.safeWithdrawal
+    if (!withdrawal?.applicable) throw new Error('sichere Entnahme erwartet')
+    expect(withdrawal.successRate ?? 1).toBeGreaterThanOrEqual(0.9)
+    expect(results.fire?.retirementAge).toBe(57)
+    expect(results.fire?.successRate).toBe(results.summary?.successRate)
+  }, 120_000)
+
+  it('meldet bei Regeln ohne festen Netto-Konsum keine sichere Entnahme', async () => {
+    const { results } = setup()
+    await vi.advanceTimersByTimeAsync(RECALC_DEBOUNCE_MS)
+    await vi.waitFor(() => expect(results.extrasStatus).toBe('done'), { timeout: 60_000 })
+    expect(results.safeWithdrawal).toEqual({ applicable: false })
+    expect(results.fire?.reached).toBe(true)
+  }, 120_000)
 })

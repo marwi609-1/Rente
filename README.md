@@ -40,15 +40,18 @@ npm run dev
     Rentenbesteuerung, Jahresabrechnung mit Günstigerprüfung
   - `social/` gesetzliche Rente, Kranken- und Pflegeversicherung
   - `longevity/` fester Horizont, Gompertz, Kohortensterbetafel
-  - `engine/` Jahresschritt, Pfad, Monte Carlo, Kennzahlen, Umrechnung real/nominal
+  - `engine/` Jahresschritt, Pfad, Monte Carlo, Kennzahlen, Umrechnung real/nominal, sichere
+    Entnahme, FIRE-Status, Heatmap-Raster, Perfect Withdrawal Rate
 - `src/workers/` Web-Worker-Pool (Comlink) und Ablaufsteuerung mit Fortschritt und Abbruch
 - `src/data/` gesetzliche Rechengrößen 2026, historische US-Renditen 1871–2025 und
   Destatis-Kohortensterbetafeln ([Quellen](docs/DATA_SOURCES.md)); die Datendateien erzeugen
   `scripts/build_historical_us.py` und `scripts/build_mortality_de.py`
 - `src/stores/` Pinia-Stores: Plan mit Validierung, Ergebnisse mit automatischer Neuberechnung
-  (500 ms nach der letzten Eingabe, abbrechbar); Orchestrierung, keine Rechenlogik
+  (500 ms nach der letzten Eingabe, abbrechbar) samt sicherer Entnahme und FIRE-Status, Analysen
+  auf Knopfdruck (Heatmap, PWR), Szenarien; Orchestrierung, keine Rechenlogik
+- `src/persistence/` Szenarien in IndexedDB (`idb`)
 - `src/ui/` Ansichten und Komponenten (Vue 3, Vuetify 3)
-  - `views/` Dashboard, Eingaben (9 Tabs), Monte Carlo, Annahmen
+  - `views/` Dashboard, Eingaben (9 Tabs), Monte Carlo, Heatmap, Szenarien, Annahmen
   - `forms/` Eingabefelder mit Einheit, Hilfetext und zod-Meldungen am Feld
   - `dashboard/` KPI-Karten
   - `charts/` ECharts (nur benötigte Module), Optionen je Diagramm, Tabellenansicht
@@ -66,7 +69,10 @@ npm run dev
 | M3          | Steuern, Rente, Krankenversicherung, Langlebigkeit                 | umgesetzt  |
 | M4          | Strategien und Entnahmeregeln                                      | umgesetzt  |
 | M5          | UI, Dashboard, Charts                                              | umgesetzt  |
-| M6          | Szenarien, Heatmap, sichere Entnahme, PWR                          | offen      |
+| M6          | Szenarien, Heatmap, sichere Entnahme, PWR                          | umgesetzt² |
 
 ¹ Der Plausibilitätsanker (historische Sequenzen ab 1926, 4 %, 50/50) ergibt mit den Shiller-Daten
 91,5 % statt der geforderten ≥ 95 %; siehe [A26](docs/ASSUMPTIONS.md).
+
+² Ohne Migration des Ursprungsformats (v1 → v2): Das Ursprungs-Default-JSON liegt nicht vor, die
+Migration ist auf Entscheidung des Nutzers zurückgestellt; siehe [A77](docs/ASSUMPTIONS.md).
