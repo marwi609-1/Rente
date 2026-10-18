@@ -108,7 +108,7 @@ gerechnet, die Erfolgsquote ist 0 oder 1.
 angewendet und gilt damit exakt für `ln(1 + r)`. Für einfache Renditen weicht sie bei den
 Default-Parametern um höchstens 0,0005 ab.
 
-**A26 – Plausibilitätsanker nicht erreicht.** Die Spezifikation erwartet für historische Sequenzen
+**A26 – Plausibilitätsanker: 91,5 % statt ≥ 95 % (akzeptiert).** Die Spezifikation erwartet für historische Sequenzen
 ab 1926 (50/50, 4 % real, 30 Jahre, ohne Steuern und Kosten) eine Erfolgsquote ≥ 95 %. Mit den
 Shiller-Daten ergeben sich 65 von 71 Fenstern (91,5 %); es scheitern die Startjahre 1964–1969,
 jeweils erst ab dem 26. Entnahmejahr. Geprüft wurde:
@@ -117,11 +117,15 @@ jeweils erst ab dem 26. Entnahmejahr. Geprüft wurde:
 - Mit anderen Startmonaten der Jahreskonvention (Februar bis Dezember) liegt die Quote zwischen
   91,5 % und 94,4 %.
 - Mit 3,9 % Entnahme sind es 97,2 %, über alle Startjahre ab 1871 bei 4 % 95,2 %.
+- Auf den Startjahren 1926–1966 (Datenzeitraum der Trinity-Studie bis 1995) sind es 38 von 41
+  Fenstern (92,7 %).
 
 Bengen (1994) verwendete mittelfristige US-Staatsanleihen, die Trinity-Studie (1998) langfristige
-Unternehmensanleihen; die Spezifikation schreibt 10-jährige Staatsanleihen (Shiller) vor. Daten und
-Modell wurden nicht angepasst; der Test prüft das reproduzierbare Ergebnis. Entscheidung über die
-Schwelle offen.
+Unternehmensanleihen; die Spezifikation schreibt 10-jährige Staatsanleihen (Shiller) vor, die in der
+Inflationsphase der 1970er schwächer abschnitten. Die Abweichung folgt aus dieser Datenwahl, nicht
+aus dem Modell. Auf Entscheidung des Nutzers wird das Ergebnis als Anker akzeptiert; Daten und
+Modell bleiben unverändert. Der Test prüft das reproduzierbare Ergebnis (65 von 71 Fenstern,
+Ausfälle nur 1964–1969 ab dem 26. Jahr, mit 3,9 % mindestens 95 %).
 
 **A27 – Student-t.** Der Median von `1 + r` entspricht dem lognormalen Modell. Das arithmetische
 Mittel der einfachen Renditen liegt dagegen über `μ` und ist theoretisch unbeschränkt, weil

@@ -15,8 +15,8 @@ import { enginePlan } from '../../helpers/plans'
  * (10-jährige US-Staatsanleihen, Jahre von Januar bis Januar) ergeben sich 65 von 71 Fenstern
  * (91,5 %); die Ausfälle sind die Startjahre 1964–1969. Eine unabhängige Nachrechnung bestätigt den
  * Wert; je nach Startmonat der Jahreskonvention liegt er zwischen 91,5 % und 94,4 %. Bengen nutzte
- * mittelfristige Staatsanleihen, die Trinity-Studie langfristige Unternehmensanleihen. Einordnung
- * in docs/ASSUMPTIONS.md (A26).
+ * mittelfristige Staatsanleihen, die Trinity-Studie langfristige Unternehmensanleihen. Das Ergebnis
+ * ist als Anker akzeptiert; Einordnung in docs/ASSUMPTIONS.md (A26).
  */
 function anchorPlan(rate: number): RetirementPlan {
   return enginePlan((p) => {

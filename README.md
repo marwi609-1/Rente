@@ -72,7 +72,8 @@ npm run dev
 | M6          | Szenarien, Heatmap, sichere Entnahme, PWR                          | umgesetzt² |
 
 ¹ Der Plausibilitätsanker (historische Sequenzen ab 1926, 4 %, 50/50) ergibt mit den Shiller-Daten
-91,5 % statt der geforderten ≥ 95 %; siehe [A26](docs/ASSUMPTIONS.md).
+91,5 % statt der geforderten ≥ 95 %; die Abweichung folgt aus der vorgegebenen Anleihereihe und ist
+akzeptiert, siehe [A26](docs/ASSUMPTIONS.md).
 
 ² Ohne Migration des Ursprungsformats (v1 → v2); sie entfällt auf Entscheidung des Nutzers, siehe
 [A77](docs/ASSUMPTIONS.md).
