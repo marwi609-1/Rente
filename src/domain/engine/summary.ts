@@ -1,5 +1,9 @@
 import type { RetirementPlan } from '../model/types'
+import { histogramOfSorted, type Histogram } from './histogram'
 import { PATH_SERIES, type PathBlock, type PathSeries } from './monteCarlo'
+import { percentileOfSorted } from './percentile'
+
+export { percentileOfSorted }
 
 /** Perzentile je Jahr (Spezifikation Abschnitt 11). */
 export const PERCENTILES = [5, 10, 25, 50, 75, 90, 95] as const
@@ -10,30 +14,50 @@ export const WEALTH_AGES = [90, 95] as const
 /** Anteil der schlechtesten Pfade für den Expected Shortfall. */
 const TAIL_SHARE = 0.1
 
-/**
- * Perzentil einer aufsteigend sortierten Stichprobe mit linearer Interpolation zwischen den
- * Ordnungsstatistiken (Hyndman/Fan Typ 7). `p` in [0, 1].
- */
-export function percentileOfSorted(sorted: ArrayLike<number>, p: number): number {
-  const n = sorted.length
-  if (n === 0) return NaN
-  const h = (n - 1) * p
-  const lo = Math.floor(h)
-  const hi = Math.min(lo + 1, n - 1)
-  return sorted[lo] + (h - lo) * (sorted[hi] - sorted[lo])
-}
-
 function sortedFinite(values: ArrayLike<number>): Float64Array {
   const out: number[] = []
   for (let i = 0; i < values.length; i++) if (Number.isFinite(values[i])) out.push(values[i])
   return Float64Array.from(out).sort()
 }
 
-export interface WealthAtAge {
-  age: number
+export interface WealthQuantiles {
   median: number
   p10: number
   p90: number
+}
+
+export interface WealthAtAge {
+  age: number
+  /** in Euro von heute */
+  real: WealthQuantiles
+  nominal: WealthQuantiles
+}
+
+/** Reale und nominale Variante einer Kennzahl. */
+export interface RealNominal<T> {
+  real: T
+  nominal: T
+}
+
+/**
+ * Repräsentativer Pfad: Rang des mittleren realen Endvermögens; bei Gleichstand (etwa vieler
+ * erschöpfter Pfade) entscheidet das mittlere reale Vermögen über alle Jahre. Beträge real, der
+ * Preisindex zu Jahresbeginn erlaubt die Rückrechnung der Zahlungen auf nominal.
+ */
+export interface MedianPath {
+  /** Index des Pfades im Lauf */
+  path: number
+  totalReal: number[]
+  total: number[]
+  consumptionReal: number[]
+  pensionNetReal: number[]
+  capitalTaxReal: number[]
+  incomeTaxReal: number[]
+  healthInsuranceReal: number[]
+  equityShare: number[]
+  bondShare: number[]
+  cashShare: number[]
+  priceIndex: number[]
 }
 
 export interface ShortfallStats {
@@ -81,7 +105,7 @@ export interface MonteCarloSummary {
   successRate: number
   /** Standardfehler √(p(1−p)/N) */
   successStdError: number
-  /** realer Bestand am Ende des Jahres, in dem das Alter erreicht wird; nur innerhalb des Horizonts */
+  /** Bestand am Ende des Jahres, in dem das Alter erreicht wird; nur innerhalb des Horizonts */
   wealthAt: WealthAtAge[]
   /** Alter, bis zu dem 10 % der Pfade ihr Depot aufgebraucht haben; `null` = nicht erreicht */
   earliestDepletionAge: number | null
@@ -102,8 +126,11 @@ export interface MonteCarloSummary {
   deathAgeHistogram: { age: number; count: number }[]
   /** Pfade, deren Sterbealter nach dem Horizont liegt (beim festen Horizont alle) */
   survivingHorizon: number
-  /** Mittelwert des realen Endvermögens der schlechtesten 10 % der Pfade */
-  expectedShortfallReal: number
+  /** Mittelwert des Endvermögens der schlechtesten 10 % der Pfade */
+  expectedShortfall: RealNominal<number>
+  /** Verteilung des Endvermögens im Horizontjahr */
+  terminalWealth: RealNominal<Histogram>
+  medianPath: MedianPath
   /** Median der annualisierten Portfoliorendite je Pfad */
   cagr: { nominal: number | null; real: number | null }
 }
@@ -111,6 +138,39 @@ export interface MonteCarloSummary {
 function medianOrNull(values: ArrayLike<number>): number | null {
   const sorted = sortedFinite(values)
   return sorted.length > 0 ? percentileOfSorted(sorted, 0.5) : null
+}
+
+/** Wählt den repräsentativen Pfad (siehe {@link MedianPath}) und liest seine Reihen aus. */
+export function medianPath(block: PathBlock): MedianPath {
+  const { paths, years, series } = block
+  const terminal = new Float64Array(paths)
+  const mean = new Float64Array(paths)
+  for (let p = 0; p < paths; p++) {
+    let sum = 0
+    for (let t = 0; t < years; t++) sum += series.totalReal[p * years + t]
+    terminal[p] = series.totalReal[p * years + years - 1]
+    mean[p] = sum / years
+  }
+  const order = Array.from({ length: paths }, (_, p) => p).sort(
+    (a, b) => terminal[a] - terminal[b] || mean[a] - mean[b] || a - b,
+  )
+  const path = order[Math.floor((paths - 1) / 2)]
+  const read = (name: PathSeries) =>
+    Array.from(series[name].subarray(path * years, (path + 1) * years))
+  return {
+    path: block.start + path,
+    totalReal: read('totalReal'),
+    total: read('total'),
+    consumptionReal: read('consumptionReal'),
+    pensionNetReal: read('pensionNetReal'),
+    capitalTaxReal: read('capitalTaxReal'),
+    incomeTaxReal: read('incomeTaxReal'),
+    healthInsuranceReal: read('healthInsuranceReal'),
+    equityShare: read('equityShare'),
+    bondShare: read('bondShare'),
+    cashShare: read('cashShare'),
+    priceIndex: read('priceIndex'),
+  }
 }
 
 /**
@@ -179,8 +239,11 @@ export function summarize(plan: RetirementPlan, block: PathBlock): MonteCarloSum
   for (const age of WEALTH_AGES) {
     const t = age - currentAge
     if (t < 0 || t >= years) continue
-    const at = (q: number) => bands.totalReal[(PERCENTILES as readonly number[]).indexOf(q)][t]
-    wealthAt.push({ age, median: at(50), p10: at(10), p90: at(90) })
+    const quantiles = (name: 'totalReal' | 'total'): WealthQuantiles => {
+      const at = (q: number) => bands[name][(PERCENTILES as readonly number[]).indexOf(q)][t]
+      return { median: at(50), p10: at(10), p90: at(90) }
+    }
+    wealthAt.push({ age, real: quantiles('totalReal'), nominal: quantiles('total') })
   }
 
   // Erschöpfungsalter: nie erschöpfte Pfade zählen als +∞.
@@ -190,12 +253,18 @@ export function summarize(plan: RetirementPlan, block: PathBlock): MonteCarloSum
   const tenthPath = depletion[Math.max(0, Math.ceil(TAIL_SHARE * paths) - 1)]
   const depletedAges = depletion.filter((age) => age !== Number.POSITIVE_INFINITY)
 
-  const terminal = new Float64Array(paths)
-  for (let p = 0; p < paths; p++) terminal[p] = block.series.totalReal[p * years + years - 1]
-  terminal.sort()
+  const terminalOf = (name: 'totalReal' | 'total') => {
+    const values = new Float64Array(paths)
+    for (let p = 0; p < paths; p++) values[p] = block.series[name][p * years + years - 1]
+    return values.sort()
+  }
+  const terminal = { real: terminalOf('totalReal'), nominal: terminalOf('total') }
   const tailCount = Math.max(1, Math.ceil(TAIL_SHARE * paths))
-  let tailSum = 0
-  for (let i = 0; i < tailCount; i++) tailSum += terminal[i]
+  const tailMean = (sorted: Float64Array) => {
+    let sum = 0
+    for (let i = 0; i < tailCount; i++) sum += sorted[i]
+    return sum / tailCount
+  }
 
   return {
     paths,
@@ -218,7 +287,12 @@ export function summarize(plan: RetirementPlan, block: PathBlock): MonteCarloSum
     },
     deathAgeHistogram: countBy(deathAges),
     survivingHorizon: paths - deathAges.length,
-    expectedShortfallReal: tailSum / tailCount,
+    expectedShortfall: { real: tailMean(terminal.real), nominal: tailMean(terminal.nominal) },
+    terminalWealth: {
+      real: histogramOfSorted(terminal.real),
+      nominal: histogramOfSorted(terminal.nominal),
+    },
+    medianPath: medianPath(block),
     cagr: { nominal: medianOrNull(block.cagrNominal), real: medianOrNull(block.cagrReal) },
   }
 }

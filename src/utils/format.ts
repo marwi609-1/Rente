@@ -33,3 +33,11 @@ export function formatNumber(value: number, fractionDigits = 0): string {
     maximumFractionDigits: fractionDigits,
   })
 }
+
+/** Kurzform für Achsen, z. B. 1.250.000 → „1,3 Mio.“, 800.000 → „800 Tsd.“. */
+export function formatCompact(value: number): string {
+  const abs = Math.abs(value)
+  if (abs >= 1e6) return `${formatNumber(value / 1e6, abs >= 1e7 ? 0 : 1)} Mio.`
+  if (abs >= 1e3) return `${formatNumber(value / 1e3)} Tsd.`
+  return formatNumber(value)
+}

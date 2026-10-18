@@ -45,8 +45,14 @@ npm run dev
 - `src/data/` gesetzliche Rechengrößen 2026, historische US-Renditen 1871–2025 und
   Destatis-Kohortensterbetafeln ([Quellen](docs/DATA_SOURCES.md)); die Datendateien erzeugen
   `scripts/build_historical_us.py` und `scripts/build_mortality_de.py`
-- `src/stores/` Pinia-Stores (Orchestrierung, keine Rechenlogik)
+- `src/stores/` Pinia-Stores: Plan mit Validierung, Ergebnisse mit automatischer Neuberechnung
+  (500 ms nach der letzten Eingabe, abbrechbar); Orchestrierung, keine Rechenlogik
 - `src/ui/` Ansichten und Komponenten (Vue 3, Vuetify 3)
+  - `views/` Dashboard, Eingaben (9 Tabs), Monte Carlo, Annahmen
+  - `forms/` Eingabefelder mit Einheit, Hilfetext und zod-Meldungen am Feld
+  - `dashboard/` KPI-Karten
+  - `charts/` ECharts (nur benötigte Module), Optionen je Diagramm, Tabellenansicht
+  - `assumptions/` Rechtsstand und Darstellung der Dokumentation
 - `tests/` spiegelt `src/domain`, dazu Komponententests unter `tests/ui`
 - `docs/` [Modell und Formeln](docs/MODEL.md), [Annahmen](docs/ASSUMPTIONS.md),
   [Datenquellen](docs/DATA_SOURCES.md)
@@ -59,7 +65,7 @@ npm run dev
 | M2          | Zufallszahlen, Marktmodelle, Monte Carlo im Worker                 | umgesetzt¹ |
 | M3          | Steuern, Rente, Krankenversicherung, Langlebigkeit                 | umgesetzt  |
 | M4          | Strategien und Entnahmeregeln                                      | umgesetzt  |
-| M5          | UI, Dashboard, Charts                                              | offen      |
+| M5          | UI, Dashboard, Charts                                              | umgesetzt  |
 | M6          | Szenarien, Heatmap, sichere Entnahme, PWR                          | offen      |
 
 ¹ Der Plausibilitätsanker (historische Sequenzen ab 1926, 4 %, 50/50) ergibt mit den Shiller-Daten

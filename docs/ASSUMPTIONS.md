@@ -143,8 +143,8 @@ Läufe reproduzierbar bleiben.
 - Der Expected Shortfall mittelt die ⌈0,1 · N⌉ niedrigsten realen Endvermögen.
 - Die Portfolio-CAGR rechnet nur über Jahre mit investiertem Kapital.
 
-Die sterblichkeitsgewichtete Sicht folgt mit dem Langlebigkeitsmodul (M3); sichere Entnahme, PWR
-und FIRE-Status mit M6.
+Die sterblichkeitsgewichtete Sicht ist seit M3 umgesetzt; sichere Entnahme, PWR und FIRE-Status
+folgen mit M6.
 
 **A30 – Worker und Pakete.** Pool mit `min(4, Kerne − 1)` Workern, Pakete zu 250 Pfaden. Ein Abbruch
 verwirft laufende Pakete und vergibt keine neuen; ein bereits gestartetes Paket rechnet im Worker
@@ -207,6 +207,66 @@ erneut, während ohne Flusssteuerung gegenläufige Drift das Band seltener ausl�
 **A57 – Geldfluss beim Rebalancing.** Der Erlös nach Steuern wird vollständig in die Lücken
 investiert. Weil die Steuer per Fixpunktiteration (Toleranz 1 Cent) bestimmt wird, kann der Bestand
 um diese Toleranz neben dem exakten Ziel liegen; Geld entsteht oder verschwindet dabei nicht.
+
+**A58 – Vorbelegungen beim Variantenwechsel.** Wechselt man in der Eingabe Strategie,
+Entnahmeregel, Langlebigkeitsmodell, KV in der Überbrückung oder Basiszins, erhält die neue Variante
+Startwerte zum Weiterbearbeiten: Prozent vom Depot 4 %; Guyton-Klinger 5 % / ±20 % / 10 %
+(Größenordnung bei Guyton/Klinger 2006); VPW 3 % real; Floor & Ceiling 4 % mit Faktoren 0,8 und
+1,2; feste Allokation 60 % Aktien; Bond Tent 70 % → 40 % beim Ruhestand → 70 % 15 Jahre später;
+Bucket 2 und 5 Jahre, Auffüllen nur nach Aktiengewinnen; Glidepath, Gompertz und fester Basiszins wie
+im Default-Szenario. Der Cash-Anteil der bisherigen Strategie bleibt erhalten. Beim Wechsel in die
+PKV ist der Beitrag 0 € und muss eingetragen werden (die Eingabe weist darauf hin); die
+Beitragssteigerung übernimmt das Wachstum der KV-Rechengrößen. Es sind keine Empfehlungen.
+
+## Fixpunktlöser
+
+**A59 – Sprungstellen statt Abbruch.** Die Spezifikation verlangt nach 30 Iterationen ohne
+Konvergenz einen Fehler. Im Default-Szenario pendelt bei einem von 10.000 Pfaden die
+Brutto-Hochrechnung in der Überbrückungsphase zwischen 115.801,19 € (Bedarf um 1,12 € ungedeckt) und
+115.802,30 € (um 1,12 € überdeckt): Beim höheren Verkauf sinkt die Steuer auf Kapitalerträge um
+1,12 €. Die Günstigerprüfung rundet zvE und Steuer auf volle Euro ab (§ 32a Abs. 1 EStG), und mit dem
+Verkaufsbetrag ändert sich die Aufteilung auf die Anlageklassen und damit der realisierte Gewinn;
+einen exakten Fixpunkt gibt es nicht. Ein Fehler würde den ganzen Lauf verwerfen. Stattdessen wird die
+Sprungstelle per Bisektion eingegrenzt und der kleinste Verkauf genommen, der den Bedarf deckt
+(Überdeckung höchstens 10 €, sie wird investiert). Größere Sprünge oder fehlende Konvergenz ohne
+eingrenzbaren Wechsel führen weiterhin zum Fehler. Geprüft: Default-Szenario und acht Varianten
+(Student-t, Block-Bootstrap, Bucket, Guyton-Klinger, VPW, ohne KVdR, PKV mit Kirchensteuer, ohne
+Günstigerprüfung) mit je 10.000 Pfaden ohne Fehler.
+
+## Oberfläche und Auswertung
+
+**A60 – Neuberechnung.** Jede Eingabeänderung startet 500 ms nach der letzten Änderung eine neue
+Berechnung und bricht eine laufende ab. Ungültige Eingaben (auch unlesbare Zahlen) machen den Plan
+ungültig; dann wird nicht gerechnet, frühere Ergebnisse bleiben gedimmt sichtbar und sind als
+veraltet gekennzeichnet. Der Schalter real/nominal (`simulation.outputReal`) löst keine
+Neuberechnung aus, weil die Auswertung beide Einheiten enthält. Der deterministische Referenzpfad
+(ein Pfad, wenige Millisekunden) wird im Hauptthread gerechnet, die Monte-Carlo-Pfade im Worker.
+
+**A61 – Einheit der Kennzahlen.** Vermögen mit 90/95, Expected Shortfall, Portfolio-Rendite und
+die Diagramme folgen dem Schalter real/nominal. Der kumulierte Fehlbetrag bleibt immer real, weil
+nominale Summen über Jahrzehnte Kaufkraft unterschiedlicher Jahre addieren würden. Der Schalter
+fester Horizont/sterblichkeitsgewichtet wirkt auf Erfolgsquote und Fehlbetrag.
+
+**A62 – Median-Pfad.** „Einkommen und Ausgaben (Median-Pfad)“ zeigt einen tatsächlichen Pfad statt
+jahresweiser Mediane der einzelnen Größen, damit sich die gestapelten Werte zu einem stimmigen
+Konsum addieren. Gewählt wird der Pfad mit dem mittleren realen Endvermögen; weil bei hohem
+Scheiterrisiko viele Pfade bei 0 enden, entscheidet bei Gleichstand das mittlere Vermögen über alle
+Jahre.
+
+**A63 – Asset Allocation beim Bucket.** Die Median-Anteile je Klasse werden auf 100 % normiert, damit
+die Flächen stapelbar sind. Erschöpfte Pfade haben Anteile 0 und gehen in den Median ein.
+
+**A64 – Endvermögensverteilung.** Die Klassen reichen bis zum 99. Perzentil; die rechtsschiefe
+Verteilung würde sonst durch wenige sehr große Endvermögen gestaucht. Größere Werte stehen in einer
+Überlaufklasse „ab …“.
+
+**A65 – Sterbe- und Erschöpfungsalter.** Das Diagramm zählt Sterbealter bis zum Horizont; Pfade, die
+den Horizont erleben, und Pfade ohne Erschöpfung stehen als Zahl im Untertitel. Beim festen
+Horizont entfällt das Sterbealter.
+
+**A66 – Ansichten in M5.** Heatmap und Szenarien (Spezifikation 12.1, Punkte 4 und 5) sowie das
+PWR-Histogramm und die Kennzahlen sichere Entnahme und FIRE-Status gehören zu M6 und fehlen bis
+dahin vollständig, statt als leere Hüllen angelegt zu sein.
 
 ## Steuern
 

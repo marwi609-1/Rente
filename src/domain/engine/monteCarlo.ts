@@ -8,6 +8,7 @@ import { simulationYears } from './timeline'
 /**
  * Je Pfad und Jahr gespeicherte Reihen; Beträge real in Euro von heute bzw. nominal (`total`).
  * Bestände werden mit dem Index zum Jahresende, Zahlungen mit dem Index zu Jahresbeginn deflationiert.
+ * `priceIndex` ist der Preisindex zu Jahresbeginn (Rückrechnung der Zahlungen auf nominal).
  */
 export const PATH_SERIES = [
   'total',
@@ -21,6 +22,7 @@ export const PATH_SERIES = [
   'equityShare',
   'bondShare',
   'cashShare',
+  'priceIndex',
 ] as const
 
 export type PathSeries = (typeof PATH_SERIES)[number]
@@ -128,6 +130,7 @@ export function simulateBlock(
       series.equityShare[i] = row.equityShare
       series.bondShare[i] = row.bondShare
       series.cashShare[i] = row.cashShare
+      series.priceIndex[i] = row.inflationIndex
       if (Number.isNaN(depletionAge) && row.total < DEPLETION_TOLERANCE) depletionAge = row.age
       if (row.shortfall > 0) {
         if (failureYears === 0) firstFailureAge = row.age

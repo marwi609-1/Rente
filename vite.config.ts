@@ -12,4 +12,18 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  build: {
+    // ECharts (nur die registrierten Module) bildet einen eigenen Chunk, der erst mit den
+    // Ergebnisansichten geladen wird; er ist minifiziert rund 650 kB groß.
+    chunkSizeWarningLimit: 700,
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            { name: 'echarts', test: /node_modules[\\/](echarts|zrender|vue-echarts)[\\/]/ },
+          ],
+        },
+      },
+    },
+  },
 })

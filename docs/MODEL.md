@@ -1,7 +1,8 @@
 # Modell und Formeln
 
-Stand: Meilenstein 4 (deterministische Engine, Zufallszahlen, Marktmodelle, Monte Carlo, Steuern,
-gesetzliche Rente, Kranken- und Pflegeversicherung, Langlebigkeit, Strategien und Entnahmeregeln).
+Stand: Meilenstein 5 (deterministische Engine, Zufallszahlen, Marktmodelle, Monte Carlo, Steuern,
+gesetzliche Rente, Kranken- und Pflegeversicherung, Langlebigkeit, Strategien und Entnahmeregeln,
+Auswertungen für Dashboard und Diagramme).
 Rechtsstand und Quellen: `DATA_SOURCES.md`.
 
 ## Zeitachse und Einheiten
@@ -68,7 +69,7 @@ Einstand `B = (B_A, B_B)` und Zielallokation `w_t` der Strategie (siehe „Strat
    dass `S_t + R_t + V = Konsum + E_t + G_t(V)`, wobei `G_t(V)` die bis dahin fälligen Steuern und
    KV-Beiträge des Jahres sind (Jahresabrechnung unten, mit den realisierten Gewinnen aus `V`).
    Gelöst per Fixpunktiteration `V ← clamp(Konsum + E_t + G_t(V) − S_t − R_t, 0, Σh)` bis
-   `|ΔV| < 1 Cent`; nach 30 Iterationen wird eine Restabweichung bis 1 € akzeptiert, sonst Fehler.
+   `|ΔV| < 1 Cent` (Lösungsverfahren siehe „Fixpunktlöser“).
    Reicht das Depot nicht, hat laufender Konsum Vorrang vor Einmalausgaben.
 5. **Überschuss** (Sparrate, Rente über Bedarf) wird gemäß Zielallokation investiert (mit `taxAware`
    und beim Bucket im Ruhestand in die untergewichteten Klassen); der Einstand steigt um den
@@ -85,6 +86,21 @@ Einstand `B = (B_A, B_B)` und Zielallokation `w_t` der Strategie (siehe „Strat
 
 Startdepot: `totalValue` nach Zielallokation im Startalter; Einstand `costBasisShare · Kurswert` je
 Fonds; Verlustvortrag `lossCarryForward`.
+
+### Fixpunktlöser
+
+Alle Hochrechnungen (Entnahme, Steuerzahlung zum Jahresende, Steuer auf das Rebalancing) lösen
+`x = clamp(b(x), lower, upper)` mit dem Bedarf `b`:
+
+1. Iteration `x ← clamp(b(x))` ab `start`, bis `|Δx| < 1 Cent` (höchstens 30 Schritte).
+2. Ohne Konvergenz: Gibt es unter den Kandidaten einen mit ungedecktem (`b(x) > x`) und einen
+   größeren mit gedecktem Bedarf (`b(x) ≤ x`), wird dazwischen per Bisektion auf 1 Cent eingegrenzt
+   und der kleinste deckende Kandidat genommen, sofern seine Überdeckung `x − b(x)` höchstens 10 €
+   beträgt. Das betrifft Sprungstellen von `b`: zvE und Steuer werden auf volle Euro abgerundet, und
+   der realisierte Gewinn steigt nicht streng mit dem Verkaufsbetrag, weil sich mit dem Betrag die
+   Aufteilung auf die Anlageklassen ändert. Ohne Fixpunkt pendelt die Iteration dann zwischen zwei
+   Werten.
+3. Sonst wird eine Restabweichung `|b(x) − x|` bis 1 € akzeptiert, darüber ein Fehler gemeldet.
 
 ## Jahresabrechnung: Steuern und Krankenversicherung
 
@@ -305,25 +321,33 @@ Die Pfade werden in Paketen (Standard 250 Pfade) auf einen Pool von Web Workern 
 bitgleich unabhängig von Paketgröße und Worker-Zahl. Je Pfad und Jahr gespeichert werden
 (`Float64Array`, Index `p · N + t`): `total` (nominal), `totalReal = total / I_{t+1}`,
 `consumptionReal = K̂_t / I_t`, `shortfallReal = F_t / I_t`, Netto-Rente, Kapitalertragsteuer,
-Einkommensteuer und KV/PV (jeweils `/ I_t`) sowie die Anteile von Aktien, Anleihen und Cash zum
-Jahresende; je Pfad außerdem Alter des ersten Fehljahres und Sterbealter.
+Einkommensteuer und KV/PV (jeweils `/ I_t`), die Anteile von Aktien, Anleihen und Cash zum
+Jahresende und der Preisindex `I_t`; je Pfad außerdem Alter des ersten Fehljahres und Sterbealter.
 
 - **Perzentile** 5, 10, 25, 50, 75, 90, 95 je Jahr und Reihe, lineare Interpolation zwischen den
   Ordnungsstatistiken (Hyndman/Fan Typ 7): `h = (N − 1) p`, `x_⌊h⌋ + (h − ⌊h⌋)(x_⌊h⌋+1 − x_⌊h⌋)`.
 - **Erfolgsquote** `p̂` = Anteil der Pfade ohne Fehljahr bis zum Horizont, Standardfehler
   `√(p̂(1 − p̂)/N)`.
-- **Vermögen mit 90 / 95:** Median, P10 und P90 von `totalReal` am Ende des Jahres, in dem das Alter
-  erreicht wird (nur innerhalb des Horizonts).
+- **Vermögen mit 90 / 95:** Median, P10 und P90 von `totalReal` bzw. `total` am Ende des Jahres, in
+  dem das Alter erreicht wird (nur innerhalb des Horizonts).
 - **Frühester Kapitalverzehr:** Erschöpfungsalter je Pfad = erstes Jahresende mit Depot < 1 Cent
   (nie erschöpft = +∞); gemeldet wird die Ordnungsstatistik an Position `⌈0,1 · N⌉`, also das Alter,
   bis zu dem 10 % der Pfade erschöpft sind; +∞ wird als „nicht erreicht“ ausgegeben.
 - **Fehlbetrag:** über die gescheiterten Pfade Median und P90 der Summe der realen Fehlbeträge sowie
   die mittlere Zahl der Fehljahre.
-- **Expected Shortfall:** Mittel des realen Endvermögens der `⌈0,1 · N⌉` schlechtesten Pfade.
+- **Expected Shortfall:** Mittel des Endvermögens der `⌈0,1 · N⌉` schlechtesten Pfade, real und
+  nominal getrennt sortiert.
 - **Sterblichkeitsgewichtet:** Erfolgsquote und Standardfehler wie oben, Fehlbeträge nur bis zum
   Sterbealter; dazu die Verteilung der Sterbealter bis zum Horizont.
 - **Portfolio-CAGR:** je Pfad `exp(Σ ln(1 + r_p,t) / m) − 1` über die `m` Jahre mit investiertem
   Kapital, real mit `ln(1 + r_p,t) − ln(1 + π_t)`; ausgewiesen wird der Median über die Pfade.
+- **Median-Pfad:** Pfade aufsteigend nach realem Endvermögen sortiert, bei Gleichstand nach dem
+  mittleren realen Vermögen über alle Jahre, dann nach Pfadindex; gewählt wird Rang `⌊(N − 1)/2⌋`.
+  Seine Reihen speisen das Diagramm „Einkommen und Ausgaben“; nominal = real · `I_t`.
+  Depotfinanzierter Konsum = `max(0, K̂_t − Netto-Rente_t)`.
+- **Endvermögensverteilung:** Histogramm mit höchstens 30 gleich breiten Klassen „runder“ Breite
+  (1, 2, 2,5 oder 5 · 10^k) vom Minimum bis zum 99. Perzentil; größere Werte bilden eine
+  Überlaufklasse.
 
 ## Geschlossene Formeln (Testanker)
 

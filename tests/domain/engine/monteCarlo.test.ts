@@ -189,12 +189,18 @@ describe('Auswertung', () => {
       { length: 1_000 },
       (_, p) => block.series.totalReal[p * years + t95],
     ).sort()
-    expect(s.wealthAt[1].median).toBe(percentileOfSorted(terminal, 0.5))
-    expect(s.wealthAt[1].p10).toBe(percentileOfSorted(terminal, 0.1))
+    expect(s.wealthAt[1].real.median).toBe(percentileOfSorted(terminal, 0.5))
+    expect(s.wealthAt[1].real.p10).toBe(percentileOfSorted(terminal, 0.1))
+    const terminalNominal = Float64Array.from(
+      { length: 1_000 },
+      (_, p) => block.series.total[p * years + t95],
+    ).sort()
+    expect(s.wealthAt[1].nominal.p90).toBe(percentileOfSorted(terminalNominal, 0.9))
 
     // Expected Shortfall: Mittel der 100 kleinsten Endvermögen
-    const worst = terminal.slice(0, 100)
-    expect(s.expectedShortfallReal).toBeCloseTo(worst.reduce((a, b) => a + b, 0) / 100, 6)
+    const mean = (values: Float64Array) => values.reduce((a, b) => a + b, 0) / values.length
+    expect(s.expectedShortfall.real).toBeCloseTo(mean(terminal.slice(0, 100)), 6)
+    expect(s.expectedShortfall.nominal).toBeCloseTo(mean(terminalNominal.slice(0, 100)), 6)
 
     // 10 % der Pfade sind bis zum gemeldeten Alter erschöpft
     const depleted = Array.from(block.depletionAge).filter((a) => !Number.isNaN(a))
@@ -224,6 +230,57 @@ describe('Auswertung', () => {
       p90CumulativeReal: null,
       meanFailureYears: null,
     })
+  })
+
+  it('verteilt das Endvermögen vollständig auf Klassen und Überlauf', () => {
+    const plan = stochasticPlan('lognormal')
+    const block = simulateBlock(plan, 0, 1_000, ctx)
+    const s = summarize(plan, block)
+    for (const h of [s.terminalWealth.real, s.terminalWealth.nominal]) {
+      expect(h.counts.reduce((a, b) => a + b, 0) + h.overflow).toBe(1_000)
+      expect(h.counts.length).toBeLessThanOrEqual(30)
+      // höchstens 1 % der Pfade liegt jenseits des 99. Perzentils
+      expect(h.overflow).toBeLessThanOrEqual(10)
+    }
+  })
+
+  it('wählt als Median-Pfad den Pfad mit dem mittleren realen Endvermögen', () => {
+    const plan = stochasticPlan('lognormal', (p) => {
+      p.simulation.paths = 1_001
+      p.spending.netConsumption = 40_000
+    })
+    const block = simulateBlock(plan, 0, 1_001, ctx)
+    const s = summarize(plan, block)
+    const years = block.years
+    const terminal = (p: number) => block.series.totalReal[p * years + years - 1]
+    const m = s.medianPath
+    const below = Array.from({ length: 1_001 }, (_, p) => terminal(p)).filter(
+      (v) => v < terminal(m.path),
+    ).length
+    expect(below).toBe(500)
+    expect(m.totalReal).toHaveLength(years)
+    expect(m.totalReal.at(-1)).toBe(terminal(m.path))
+    expect(m.total[0]).toBe(block.series.total[m.path * years])
+    expect(m.priceIndex[0]).toBe(1)
+    // Der Preisindex zu Jahresbeginn ist der Index zum Ende des Vorjahres.
+    expect(m.priceIndex[5]).toBeCloseTo(m.total[4] / m.totalReal[4], 9)
+  })
+
+  it('entscheidet bei gleichem Endvermögen nach dem mittleren Vermögen', () => {
+    const plan = stochasticPlan('lognormal', (p) => (p.spending.netConsumption = 200_000))
+    const block = simulateBlock(plan, 0, 1_000, ctx)
+    const s = summarize(plan, block)
+    const years = block.years
+    // Alle Pfade sind erschöpft; der Median-Pfad liegt beim mittleren Vermögen in der Mitte.
+    expect(s.medianPath.totalReal.at(-1)).toBe(0)
+    const meanOf = (p: number) => {
+      let sum = 0
+      for (let t = 0; t < years; t++) sum += block.series.totalReal[p * years + t]
+      return sum / years
+    }
+    const own = meanOf(s.medianPath.path)
+    const lower = Array.from({ length: 1_000 }, (_, p) => meanOf(p)).filter((v) => v < own).length
+    expect(lower).toBe(499)
   })
 
   it('lässt „Vermögen mit …“ außerhalb des Horizonts weg', () => {
