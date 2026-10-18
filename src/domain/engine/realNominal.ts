@@ -23,6 +23,9 @@ const START_OF_YEAR_FIELDS = [
   'otherIncomeGross',
   'otherIncomeNet',
   'capitalTax',
+  'capitalTaxOnSales',
+  'capitalTaxOnIncome',
+  'capitalTaxOnRebalance',
   'incomeTax',
   'healthInsurance',
 ] as const satisfies readonly (keyof YearResult)[]

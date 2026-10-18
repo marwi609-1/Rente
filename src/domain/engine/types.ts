@@ -43,6 +43,12 @@ export interface YearResult {
   otherIncomeNet: EUR
   /** Steuer auf Kapitalerträge des Jahres (Abgeltungsteuer bzw. Mehrsteuer bei Günstigerprüfung) */
   capitalTax: EUR
+  /** davon durch Verkäufe zu Jahresbeginn (einschließlich Versicherungserträgen) */
+  capitalTaxOnSales: EUR
+  /** davon durch Vorabpauschale, Zinsen und Verkäufe zur Steuerzahlung */
+  capitalTaxOnIncome: EUR
+  /** davon durch Rebalancing bzw. Auffüllen der Töpfe */
+  capitalTaxOnRebalance: EUR
   /** Einkommensteuer mit Soli und Kirchensteuer auf Rente und weitere Einkünfte */
   incomeTax: EUR
   /** Beiträge zu KV/PV bzw. PKV nach Zuschuss der Rentenversicherung */

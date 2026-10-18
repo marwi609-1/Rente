@@ -12,7 +12,7 @@ export const simulationTasks = {
   },
 
   summarize(plan: RetirementPlan, blocks: PathBlock[]): MonteCarloSummary {
-    return summarize(plan, mergeBlocks(blocks))
+    return summarize(plan, mergeBlocks(blocks), defaultEngineContext)
   },
 
   countSuccess(plan: RetirementPlan, start: number, end: number): SuccessCount {

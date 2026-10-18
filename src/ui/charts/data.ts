@@ -1,6 +1,6 @@
 import type { HeatmapResult } from '@/domain/engine/heatmap'
 import type { Histogram } from '@/domain/engine/histogram'
-import type { MonteCarloSummary } from '@/domain/engine/summary'
+import type { CapitalTaxDetail, MonteCarloSummary } from '@/domain/engine/summary'
 import type { YearResult } from '@/domain/engine/types'
 import type { RetirementPlan } from '@/domain/model/types'
 import { allocationPolicy } from '@/domain/strategy/allocation'
@@ -15,6 +15,8 @@ import type { HeatmapChartData, OverlayData } from './options'
 export interface NamedSeries {
   name: string
   values: number[]
+  /** Aufschlüsselung im Tooltip: Text und Betrag je Alter; Zeilen mit Betrag 0 entfallen */
+  details?: { label: (t: number) => string; values: number[] }[]
 }
 
 export interface AgeMarker {
@@ -93,6 +95,27 @@ export function wealthFanData(
   }
 }
 
+/** Herkunft der Kapitalertragsteuer mit den verkauften Beträgen. */
+function capitalTaxDetails(
+  detail: CapitalTaxDetail | undefined,
+  unit: (values: number[]) => number[],
+): NamedSeries['details'] {
+  if (!detail) return undefined
+  const sales = unit(detail.salesReal)
+  const rebalance = unit(detail.rebalanceSalesReal)
+  return [
+    {
+      label: (t) => `Verkauf zu Jahresbeginn (${formatCompact(sales[t])} €)`,
+      values: unit(detail.onSalesReal),
+    },
+    { label: () => 'Vorabpauschale und Zinsen', values: unit(detail.onIncomeReal) },
+    {
+      label: (t) => `Umschichtung (${formatCompact(rebalance[t])} € verkauft)`,
+      values: unit(detail.onRebalanceReal),
+    },
+  ]
+}
+
 /**
  * Einkommen und Ausgaben des Median-Pfades je Alter; weitere Einkünfte nur, wenn der Pfad welche
  * hat. Einmalzahlungen fließen ins Depot und erscheinen hier nicht.
@@ -112,7 +135,11 @@ export function incomeData(summary: MonteCarloSummary, real: boolean): StackedAg
       { name: 'Netto-Rente', values: unit(m.pensionNetReal) },
       ...other,
       { name: 'Depotfinanzierter Konsum', values: unit(depotConsumption) },
-      { name: 'Kapitalertragsteuer', values: unit(m.capitalTaxReal) },
+      {
+        name: 'Kapitalertragsteuer',
+        values: unit(m.capitalTaxReal),
+        details: capitalTaxDetails(m.capitalTaxDetail, unit),
+      },
       { name: 'Einkommensteuer', values: unit(m.incomeTaxReal) },
       { name: 'KV/PV', values: unit(m.healthInsuranceReal) },
     ],
