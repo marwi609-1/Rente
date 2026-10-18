@@ -88,7 +88,8 @@ const unassigned = computed(() =>
     </v-alert>
 
     <v-tabs-window v-model="active">
-      <v-tabs-window-item v-for="tab in INPUT_TABS" :key="tab" :value="tab">
+      <!-- Abstand oben: Das Fenster schneidet über den Rand ragende Feldbeschriftungen sonst ab. -->
+      <v-tabs-window-item v-for="tab in INPUT_TABS" :key="tab" :value="tab" class="pt-3">
         <component :is="tabs[tab].component" />
       </v-tabs-window-item>
     </v-tabs-window>
