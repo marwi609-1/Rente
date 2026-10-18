@@ -6,6 +6,7 @@ import { INPUT_TABS, type InputTab } from '@/router'
 import { provideFieldRegistry, tabOfIssue, usePlanIssues } from '@/ui/forms/issues'
 import HealthTab from '@/ui/forms/tabs/HealthTab.vue'
 import HouseholdTab from '@/ui/forms/tabs/HouseholdTab.vue'
+import IncomeTab from '@/ui/forms/tabs/IncomeTab.vue'
 import MarketTab from '@/ui/forms/tabs/MarketTab.vue'
 import PensionTab from '@/ui/forms/tabs/PensionTab.vue'
 import PortfolioTab from '@/ui/forms/tabs/PortfolioTab.vue'
@@ -19,6 +20,7 @@ const tabs: Record<InputTab, { title: string; component: Component }> = {
   vermoegen: { title: 'Vermögen & Sparen', component: PortfolioTab },
   konsum: { title: 'Konsum & Entnahme', component: SpendingTab },
   rente: { title: 'Rente', component: PensionTab },
+  einkuenfte: { title: 'Weitere Einkünfte', component: IncomeTab },
   krankenversicherung: { title: 'Krankenversicherung', component: HealthTab },
   steuern: { title: 'Steuern', component: TaxTab },
   strategie: { title: 'Strategie', component: StrategyTab },

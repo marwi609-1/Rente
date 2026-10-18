@@ -104,6 +104,8 @@ describe('Eingabeformulare', () => {
 
   it.each(INPUT_TABS)('zeigt im Tab %s jedes Feld mit Hilfetext', async (tab) => {
     const { wrapper } = await open(tab)
+    // Der Tab „Weitere Einkünfte“ beginnt leer.
+    if (tab === 'einkuenfte') await wrapper.get('[data-testid="income-add"]').trigger('click')
     const fields = wrapper.findAll('[data-path]')
     expect(fields.length).toBeGreaterThanOrEqual(1)
     for (const field of fields) {
@@ -142,5 +144,39 @@ describe('Langlebigkeit', () => {
     const l = store.plan.household.longevity
     expect(l.type === 'gompertz' && l.modalAge > 90).toBe(true)
     expect(wrapper.find('[data-testid="gompertz-fit"] button').exists()).toBe(false)
+  })
+})
+
+describe('Weitere Einkünfte', () => {
+  it('legt Einkünfte an, zeigt die steuerliche Behandlung und entfernt sie wieder', async () => {
+    const { wrapper, store } = await open('einkuenfte')
+    expect(wrapper.text()).toContain('Keine weiteren Einkünfte erfasst.')
+    await wrapper.get('[data-testid="income-add"]').trigger('click')
+    await flushPromises()
+    expect(store.plan.additionalIncome).toHaveLength(1)
+    expect(store.plan.additionalIncome[0]).toMatchObject({
+      product: 'bav-insurance',
+      payout: 'lifelong',
+      startAge: 67,
+    })
+    expect(store.validation.ok).toBe(true)
+    const treatment = wrapper.get('[data-testid="income-treatment"]').text()
+    expect(treatment).toContain('§ 22 Nr. 5 EStG')
+    expect(treatment).toContain('Versorgungsbezug')
+
+    // Einmalzahlung einer Lebensversicherung: Beiträge und Vertragsjahr werden abgefragt
+    store.plan.additionalIncome[0].product = 'life-insurance'
+    store.plan.additionalIncome[0].payout = 'lump-sum'
+    await flushPromises()
+    expect(wrapper.find('[data-path="additionalIncome.0.contributions"]').exists()).toBe(true)
+    expect(wrapper.find('[data-path="additionalIncome.0.years"]').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="income-treatment"]').text()).toContain('Abgeltungsteuer')
+
+    const messages = await type(wrapper, 'additionalIncome.0.startAge', '40')
+    expect(messages()).toBe('Der Beginn muss zwischen aktuellem Alter und Planungshorizont liegen.')
+    expect(store.validation.ok).toBe(false)
+
+    await wrapper.get('[aria-label="Einkunft 1 entfernen"]').trigger('click')
+    expect(store.plan.additionalIncome).toHaveLength(0)
   })
 })

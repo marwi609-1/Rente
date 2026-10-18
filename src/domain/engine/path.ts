@@ -1,6 +1,7 @@
 import type { ReturnPath } from '../market/types'
 import { geometricMean, netOfCost } from '../market/returns'
 import type { Allocation, AssetVector, RetirementPlan } from '../model/types'
+import { additionalIncomeSchedule } from '../income/schedule'
 import { pensionSchedule } from '../social/pension'
 import { allocationPolicy } from '../strategy/allocation'
 import { bucketAllocation, bucketTargets, refillPlan, sequentialSale } from '../strategy/bucket'
@@ -100,10 +101,22 @@ export function createPathSimulator(plan: RetirementPlan, ctx: EngineContext): P
   const phases = Array.from({ length: years }, (_, t) =>
     phaseForAge(household, plan.statePension, household.currentAge + t),
   )
+  const expectedInflation = geometricMean(market.inflation.mean, market.inflation.vol)
+  const incomes = additionalIncomeSchedule(plan, years, params, expectedInflation)
 
-  /** Netto-Rente im Jahr t bei Preisindex `indexAt`, nur mit Steuer und KV auf die Rente. */
-  const expectedPensionNet = (t: number, indexAt: number): number => {
-    if (t >= years || pension.gross[t] <= 0) return 0
+  /** Laufende Renten und Einkünfte nach Einkommensteuer und KV/PV darauf. */
+  const recurringNetOf = (gross: number, c: Charges) =>
+    Math.max(0, gross - c.incomeTaxRecurring - c.healthOnPension - c.healthOnIncome)
+
+  /**
+   * Netto aus Rente und laufenden weiteren Einkünften im Jahr t bei Preisindex `indexAt`, nur mit
+   * Steuer und KV auf diese Einkünfte.
+   */
+  const expectedIncomeNet = (t: number, indexAt: number): number => {
+    if (t >= years) return 0
+    const income = incomes?.[t] ?? null
+    const gross = pension.gross[t] + (income?.recurring ?? 0)
+    if (gross <= 0) return 0
     const c = annualCharges(
       settings,
       {
@@ -113,10 +126,11 @@ export function createPathSimulator(plan: RetirementPlan, ctx: EngineContext): P
         pensionAllowance: pension.allowance,
         lossCarryForward: 0,
         indexFactor: tax.indexBracketsWithInflation ? indexAt : 1,
+        income,
       },
       0,
     )
-    return Math.max(0, pension.gross[t] - c.incomeTax - c.healthOnPension)
+    return recurringNetOf(gross, c)
   }
 
   /**
@@ -130,13 +144,12 @@ export function createPathSimulator(plan: RetirementPlan, ctx: EngineContext): P
       spending.netConsumption *
       profileFactor(spending.ageProfile, household.currentAge + t) *
       indexAt
-    return Math.max(0, consumption - expectedPensionNet(t, indexAt))
+    return Math.max(0, consumption - expectedIncomeNet(t, indexAt))
   }
 
   // Bucket vor dem Ruhestand: Allokation, die sich zu Ruhestandsbeginn ergäbe, mit dem aktuellen
   // Depotwert und der erwarteten Inflation bis dahin.
   const retirementOffset = household.retirementAge - household.currentAge
-  const expectedInflation = geometricMean(market.inflation.mean, market.inflation.vol)
   const depotAmountAtRetirement = (total: number): number => {
     const rule = spending.rule
     const profile = profileFactor(spending.ageProfile, household.retirementAge)
@@ -212,6 +225,8 @@ export function createPathSimulator(plan: RetirementPlan, ctx: EngineContext): P
       const retired = age >= household.retirementAge
       const bucketRetired = bucket !== null && retired
       const pensionGross = pension.gross[t]
+      const income = incomes?.[t] ?? null
+      const recurringIncome = income?.recurring ?? 0
       const year = {
         phase,
         yearIndex: t,
@@ -219,10 +234,9 @@ export function createPathSimulator(plan: RetirementPlan, ctx: EngineContext): P
         pensionAllowance: pension.allowance,
         lossCarryForward,
         indexFactor: tax.indexBracketsWithInflation ? index : 1,
+        income,
       }
       const chargesFor = (capitalNet: number) => annualCharges(settings, year, capitalNet)
-      const pensionNetOf = (c: Charges) =>
-        Math.max(0, pensionGross - c.incomeTax - c.healthOnPension)
 
       // 1.–2. Bedarf zu Jahresbeginn, nominal
       const ruleAmount = retired
@@ -239,11 +253,15 @@ export function createPathSimulator(plan: RetirementPlan, ctx: EngineContext): P
         bucketRetired
           ? sequentialSale(from, amount)
           : sell(from, target, amount, rebalancing.taxAware).amounts
+      // Regeln für den depotfinanzierten Konsum: Rente und laufende Einkünfte kommen hinzu
       const consumptionTarget = (c: Charges) =>
-        totalConsumptionRule || !retired ? ruleAmount : ruleAmount + pensionNetOf(c)
+        totalConsumptionRule || !retired
+          ? ruleAmount
+          : ruleAmount + recurringNetOf(pensionGross + recurringIncome, c)
       const oneOff = oneOffsAt(spending.oneOffs, age) * index
       const saving = retired ? 0 : savings.yearlyNet * Math.pow(1 + savings.realGrowth, t) * index
-      const inflows = saving + pensionGross
+      const otherIncome = recurringIncome + (income?.lumpSum ?? 0)
+      const inflows = saving + pensionGross + otherIncome
 
       // 3.–4. Verkauf so hochrechnen, dass nach Steuern und KV der Netto-Bedarf gedeckt ist
       const opening = solveFixpoint(
@@ -444,7 +462,16 @@ export function createPathSimulator(plan: RetirementPlan, ctx: EngineContext): P
         oneOffSpending,
         shortfall,
         pensionGross,
-        pensionNet: retired ? pensionNetOf(charges) : 0,
+        pensionNet: retired
+          ? Math.max(0, pensionGross - charges.incomeTaxOnPension - charges.healthOnPension)
+          : 0,
+        otherIncomeGross: otherIncome,
+        otherIncomeNet: Math.max(
+          0,
+          recurringIncome -
+            (charges.incomeTaxRecurring - charges.incomeTaxOnPension) -
+            charges.healthOnIncome,
+        ),
         capitalTax: charges.capitalTax,
         incomeTax: charges.incomeTax,
         healthInsurance: charges.health,

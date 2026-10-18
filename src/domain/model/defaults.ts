@@ -36,6 +36,7 @@ export function createDefaultPlan(startYear: number): RetirementPlan {
       earlyStartAllowed: true,
       adjustmentRate: 0.025,
     },
+    additionalIncome: [],
     health: { bridgePhase: { type: 'gkv-voluntary' }, kvdrEligible: true, paramsGrowth: 0.025 },
     tax: {
       enabled: true,

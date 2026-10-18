@@ -5,7 +5,7 @@ import { runDeterministic } from '@/domain/engine/deterministic'
 import { simulatePath } from '@/domain/engine/path'
 import { phaseForAge, simulationYears } from '@/domain/engine/timeline'
 import type { ReturnPath } from '@/domain/market/types'
-import type { RetirementPlan } from '@/domain/model/types'
+import type { AdditionalIncome, RetirementPlan } from '@/domain/model/types'
 import { PlanValidationError } from '@/domain/model/validation'
 import { enginePlan } from '../../helpers/plans'
 
@@ -203,5 +203,71 @@ describe('runDeterministic', () => {
 
   it('ist deterministisch', () => {
     expect(runDeterministic(enginePlan(), ctx)).toEqual(runDeterministic(enginePlan(), ctx))
+  })
+})
+
+describe('Weitere Einkünfte', () => {
+  const income = (patch: Partial<AdditionalIncome>): AdditionalIncome => ({
+    label: '',
+    product: 'other-tax-free',
+    payout: 'lifelong',
+    startAge: 60,
+    years: 10,
+    amount: 1_000,
+    growth: 0,
+    basis: 'nominal',
+    contributions: 0,
+    contractYear: 2010,
+    fundLinked: false,
+    ...patch,
+  })
+
+  it('verringert mit einer Einmalzahlung den Verkauf im Zahlungsjahr', () => {
+    const without = runDeterministic(enginePlan(), ctx)
+    const withLump = runDeterministic(
+      enginePlan((p) => {
+        p.additionalIncome = [income({ payout: 'lump-sum', amount: 100_000 })]
+      }),
+      ctx,
+    )
+    // mit 60 (Index 8) übersteigt der Konsum die Zahlung
+    expect(without[8].netConsumption).toBeGreaterThan(100_000)
+    expect(withLump[8].grossSales).toBeCloseTo(without[8].grossSales - 100_000, 6)
+    expect(withLump[8].otherIncomeGross).toBe(100_000)
+    // Einmalzahlungen zählen nicht als laufendes Einkommen
+    expect(withLump[8].otherIncomeNet).toBe(0)
+    expect(withLump[7].otherIncomeGross).toBe(0)
+  })
+
+  it('erhöht bei Prozent-vom-Depot den Konsum um die laufenden Einkünfte netto', () => {
+    const rule = (p: RetirementPlan) => {
+      p.spending.rule = { type: 'percent-of-portfolio', rate: 0.04 }
+      p.spending.minimumAcceptableConsumption = 0
+    }
+    const without = runDeterministic(enginePlan(rule), ctx)
+    const withIncome = runDeterministic(
+      enginePlan((p) => {
+        rule(p)
+        p.additionalIncome = [income({ product: 'other-taxable' })]
+      }),
+      ctx,
+    )
+    expect(withIncome[8].netConsumption - without[8].netConsumption).toBeCloseTo(12_000, 6)
+    expect(withIncome[8].otherIncomeNet).toBeCloseTo(12_000, 9)
+  })
+
+  it('erhebt auf eine Betriebsrente Einkommensteuer und den vollen KV/PV-Beitrag', () => {
+    const plan = enginePlan.defaults()
+    const without = runDeterministic(plan, ctx)
+    plan.additionalIncome = [income({ product: 'bav-insurance', startAge: 67, amount: 500 })]
+    const rows = runDeterministic(plan, ctx)
+    const free = 197.75 * 12 * 1.025 ** 15
+    expect(rows[15].healthInsurance - without[15].healthInsurance).toBeCloseTo(
+      (6_000 - free) * 0.175 + 6_000 * 0.036,
+      6,
+    )
+    expect(rows[15].incomeTax).toBeGreaterThan(without[15].incomeTax + 1_000)
+    expect(rows[15].otherIncomeNet).toBeLessThan(6_000)
+    expect(rows[15].otherIncomeNet).toBeGreaterThan(4_000)
   })
 })

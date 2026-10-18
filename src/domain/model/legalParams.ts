@@ -20,6 +20,16 @@ export interface IncomeTaxTariff {
   zone5: { rate: Rate; deduction: number }
 }
 
+/** Zeile der Tabelle zum Versorgungsfreibetrag (§ 19 Abs. 2 Satz 3 EStG). */
+export interface PensionAllowanceRow {
+  /** Prozentsatz der Versorgungsbezüge */
+  share: Rate
+  /** Höchstbetrag des Versorgungsfreibetrags */
+  cap: number
+  /** Zuschlag zum Versorgungsfreibetrag */
+  surcharge: number
+}
+
 /** Gesetzliche Rechengrößen eines Jahres (Steuer und Sozialversicherung). */
 export interface LegalParams {
   year: number
@@ -44,6 +54,36 @@ export interface LegalParams {
     specialExpensesLumpSum: number
     /** Besteuerungsanteil nach Jahr des Rentenbeginns, ab `firstYear` jährlich */
     taxableShare: { firstYear: number; shares: Rate[] }
+    /**
+     * Ertragsanteil privater Leibrenten nach dem bei Beginn vollendeten Lebensjahr; Stufen
+     * „ab Alter“, aufsteigend
+     */
+    yieldShare: { fromAge: number; share: Rate }[]
+  }
+  /** Versorgungsbezüge (Betriebsrente aus Direktzusage oder Unterstützungskasse) */
+  occupationalPension: {
+    /** Versorgungsfreibetrag und Zuschlag nach Jahr des Versorgungsbeginns, ab `firstYear` jährlich */
+    allowance: { firstYear: number; rows: PensionAllowanceRow[] }
+    /** Bezüge wegen Alters gelten erst ab diesem vollendeten Lebensjahr als Versorgungsbezüge */
+    minimumAge: number
+    /** Werbungskosten-Pauschbetrag für Versorgungsbezüge */
+    lumpSumExpenses: number
+    /** Arbeitnehmer-Pauschbetrag für übrigen Arbeitslohn */
+    employeeLumpSum: number
+  }
+  /** Erträge aus Lebens- und Rentenversicherungen bei Kapital- oder Ratenauszahlung */
+  lifeInsurance: {
+    /** Vertragsabschluss ab diesem Jahr: der Unterschiedsbetrag ist steuerpflichtig */
+    taxableFromContractYear: number
+    /** hälftiger Ansatz nach Vollendung dieses Lebensjahres … */
+    halfIncomeAge: number
+    /** … bzw. dieses Lebensjahres bei Vertragsabschluss ab `laterAgeFromContractYear` */
+    halfIncomeAgeLater: number
+    laterAgeFromContractYear: number
+    /** Mindestdauer seit Vertragsabschluss für den hälftigen Ansatz, in Jahren */
+    minimumTermYears: number
+    /** steuerfreier Anteil des Unterschiedsbetrags bei fondsgebundenen Versicherungen */
+    fundExemption: Rate
   }
   statutoryPension: {
     /** Minderung des Zugangsfaktors je Monat vorzeitiger Inanspruchnahme */
@@ -63,5 +103,9 @@ export interface LegalParams {
     contributionCeilingMonthly: number
     /** mindert der Sparer-Pauschbetrag die Beitragsgrundlage aus Kapitalerträgen? */
     capitalBaseAfterSaverAllowance: boolean
+    /** Freigrenze bzw. Freibetrag für Betriebsrenten je Monat */
+    occupationalAllowanceMonthly: number
+    /** Kapitalleistungen aus Versorgungsbezügen verteilen sich auf so viele Jahre */
+    lumpSumSpreadYears: number
   }
 }

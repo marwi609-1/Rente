@@ -113,7 +113,7 @@ const historicalNotice = computed(() =>
         <v-col v-if="income" cols="12" md="6">
           <ChartCard
             title="Einkommen und Ausgaben"
-            :subtitle="`Median-Pfad je Alter, ${unitLabel}: Netto-Rente und depotfinanzierter Konsum ergeben den Konsum, darauf Steuern und KV/PV`"
+            :subtitle="`Median-Pfad je Alter, ${unitLabel}: Netto-Rente, laufende weitere Einkünfte und depotfinanzierter Konsum ergeben den Konsum, darauf Steuern und KV/PV`"
             :option="(theme, layout) => stackedBarOption(income!, theme, layout)"
             :table="() => stackedTable(income!)"
             test-id="chart-income"

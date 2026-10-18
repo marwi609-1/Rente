@@ -47,17 +47,43 @@ export interface IncomeTaxResult {
 }
 
 /**
+ * Tarifliche Einkommensteuer mit außerordentlichen Einkünften `extraordinary` nach der
+ * Fünftelregelung (§ 34 Abs. 1 EStG): Steuer auf das übrige zvE plus das Fünffache der Mehrsteuer auf
+ * ein Fünftel der außerordentlichen Einkünfte; ist das übrige zvE negativ, das Fünffache der Steuer
+ * auf ein Fünftel des gesamten zvE.
+ */
+export function tariffWithExtraordinary(
+  taxableIncome: number,
+  extraordinary: number,
+  t: IncomeTaxTariff,
+): number {
+  if (extraordinary <= 0) return tariffIncomeTax(taxableIncome, t)
+  if (taxableIncome < 0) {
+    const total = taxableIncome + extraordinary
+    return total > 0 ? 5 * tariffIncomeTax(total / 5, t) : 0
+  }
+  const rest = tariffIncomeTax(taxableIncome, t)
+  return rest + 5 * (tariffIncomeTax(taxableIncome + extraordinary / 5, t) - rest)
+}
+
+/**
  * Einkommensteuer mit Solidaritätszuschlag und Kirchensteuer (Satz × Einkommensteuer).
  * `indexFactor` > 1 schreibt alle Tarifeckwerte und die Soli-Freigrenze proportional fort:
- * Steuer(zvE) = indexFactor · Steuer₂₀₂₆(zvE / indexFactor).
+ * Steuer(zvE) = indexFactor · Steuer₂₀₂₆(zvE / indexFactor). `extraordinary` sind außerordentliche
+ * Einkünfte nach § 34 Abs. 1 EStG zusätzlich zum zvE `taxableIncome`.
  */
 export function incomeTaxTotal(
   taxableIncome: number,
   params: LegalParams,
   churchRate: number,
   indexFactor = 1,
+  extraordinary = 0,
 ): IncomeTaxResult {
-  const base = tariffIncomeTax(taxableIncome / indexFactor, params.incomeTax)
+  const base = tariffWithExtraordinary(
+    taxableIncome / indexFactor,
+    extraordinary / indexFactor,
+    params.incomeTax,
+  )
   const soli = solidaritySurcharge(base, params.solidaritySurcharge)
   const incomeTax = base * indexFactor
   const solidarity = soli * indexFactor

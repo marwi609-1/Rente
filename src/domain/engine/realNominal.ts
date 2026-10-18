@@ -20,6 +20,8 @@ const START_OF_YEAR_FIELDS = [
   'shortfall',
   'pensionGross',
   'pensionNet',
+  'otherIncomeGross',
+  'otherIncomeNet',
   'capitalTax',
   'incomeTax',
   'healthInsurance',

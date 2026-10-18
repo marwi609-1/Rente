@@ -67,6 +67,45 @@ describe('Diagrammdaten', () => {
     expect(real.series[1].values.every((v) => v >= 0)).toBe(true)
   })
 
+  it('weist weitere Einkünfte als eigene Reihe aus und mindert damit den Depotkonsum', () => {
+    expect(incomeData(run.summary, true).series.map((x) => x.name)).not.toContain(
+      'Weitere Einkünfte netto',
+    )
+    const { summary } = smallRun((p) => {
+      p.additionalIncome = [
+        {
+          label: 'Betriebsrente',
+          product: 'other-taxable',
+          payout: 'lifelong',
+          startAge: 67,
+          years: 10,
+          amount: 500,
+          growth: 0,
+          basis: 'nominal',
+          contributions: 0,
+          contractYear: 2010,
+          fundLinked: false,
+        },
+      ]
+    })
+    const data = incomeData(summary, true)
+    expect(data.series.map((x) => x.name)).toEqual([
+      'Netto-Rente',
+      'Weitere Einkünfte netto',
+      'Depotfinanzierter Konsum',
+      'Kapitalertragsteuer',
+      'Einkommensteuer',
+      'KV/PV',
+    ])
+    const t = 20
+    const m = summary.medianPath
+    expect(data.series[1].values[t]).toBeCloseTo(6_000 / m.priceIndex[t], 6)
+    expect(data.series[2].values[t]).toBeCloseTo(
+      Math.max(0, m.consumptionReal[t] - m.pensionNetReal[t] - m.otherIncomeNetReal[t]),
+      9,
+    )
+  })
+
   it('zeigt die Zielallokation der Strategie, beim Bucket normierte Median-Anteile', () => {
     const { plan, summary } = run
     const target = allocationData(plan, summary)

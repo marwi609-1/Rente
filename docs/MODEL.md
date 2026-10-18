@@ -60,14 +60,17 @@ Einstand `B = (B_A, B_B)` und Zielallokation `w_t` der Strategie (siehe „Strat
 2. **Bedarf zu Jahresbeginn** (nominal):
    - Regelbetrag `K_t = Regel_t · f(a_t)` im Ruhestand, sonst 0 (`f` = Ausgabenprofil).
      Bei `fixed-real` ist `K_t` der gesamte Netto-Konsum; bei den übrigen Regeln ist `K_t` der
-     depotfinanzierte Konsum, der Gesamtkonsum ist `K_t + Netto-Rente`. Die Regel sieht den
-     Depotwert zu Jahresbeginn, `I_t` und die Portfoliorendite des Vorjahres.
+     depotfinanzierte Konsum, der Gesamtkonsum ist `K_t` + Netto-Rente + laufende weitere Einkünfte
+     netto. Die Regel sieht den Depotwert zu Jahresbeginn, `I_t` und die Portfoliorendite des
+     Vorjahres.
    - Einmalausgaben `E_t = Σ amount(a_t) · I_t`, Sparrate (nur Erwerbsphase)
      `S_t = yearlyNet · (1 + realGrowth)^t · I_t`.
 3. **Einkommen:** Rente brutto `R_t` (siehe unten); Netto-Rente `R_t − ESt_t − KV_Rente,t`.
+   Weitere Einkünfte `W_t` (laufend und einmalig, siehe „Weitere Einkünfte“) zählen zu den
+   Zuflüssen.
 4. **Brutto-Hochrechnung:** Verkauf `V` (Aufteilung nach Zielallokation bzw. steueroptimiert, beim
    Bucket im Ruhestand der Reihe nach aus Cash, Anleihen, Aktien) so,
-   dass `S_t + R_t + V = Konsum + E_t + G_t(V)`, wobei `G_t(V)` die bis dahin fälligen Steuern und
+   dass `S_t + R_t + W_t + V = Konsum + E_t + G_t(V)`, wobei `G_t(V)` die bis dahin fälligen Steuern und
    KV-Beiträge des Jahres sind (Jahresabrechnung unten, mit den realisierten Gewinnen aus `V`).
    Gelöst als Fixpunkt `V = clamp(Konsum + E_t + G_t(V) − S_t − R_t, 0, Σh)` auf 1 Cent genau
    (Lösungsverfahren siehe „Fixpunktlöser“).
@@ -136,7 +139,16 @@ Verlustverrechnung einer Bank.
 - Fortschreibung der Eckwerte (optional): `Steuer_t(zvE) = I_t · Steuer₂₀₂₆(zvE / I_t)`; die
   Soli-Freigrenze wird ebenso fortgeschrieben, Pauschbeträge nicht.
 - Günstigerprüfung (außerhalb der Erwerbsphase): `min(ESt(zvE) + Abgeltungsteuer; ESt(zvE + x⁺))`.
-- Ausweis: `incomeTax` = Steuer auf die Rente allein; `capitalTax` = Gesamtsteuer − `incomeTax`.
+- Ausweis: `incomeTax` = Steuer auf Rente und weitere Einkünfte; `capitalTax` = Gesamtsteuer −
+  `incomeTax`.
+- Mit weiteren Einkünften in Schichten: laufende Einkünfte `L` (Rente und laufende weitere
+  Einkünfte nach Frei- und Pauschbeträgen), Einmalzahlungen `M`, Kapitalabfindungen `F`
+  (Fünftelregelung), Kapitalerträge `x⁺`: `ESt_lfd = ESt(L − 36 € − KV)`,
+  `ESt = ESt(L + M − 36 € − KV; F)` mit `ESt(z; F) = ESt(z) + 5 · (ESt(z + F/5) − ESt(z))` bzw.
+  `5 · ESt((z + F)/5)` bei `z < 0` (§ 34 Abs. 1 EStG); Günstigerprüfung auf `L + M + x⁺`. Der
+  Werbungskosten-Pauschbetrag von 102 € gilt einmal für alle Einkünfte nach § 22 EStG. Die Steuer
+  auf laufende Einkünfte wird nach steuerpflichtigem Betrag auf Rente und weitere Einkünfte
+  aufgeteilt (Ausweis der Netto-Beträge).
 
 ### Gesetzliche Rente
 
@@ -161,7 +173,35 @@ Rechengrößen wachsen mit `paramsGrowth`: `Min_t = 1.318,33 · 12 · (1+g)^t`,
 - Rente ohne KVdR: Rente zuerst bis zur BBG `R̃ = min(R, BBG)`, dann Kapitalerträge
   `X = min(x_KV, BBG − R̃)`, Aufstockung auf die Mindestgrundlage `A = max(0, Min − R̃ − X)`:
   `R̃ · (14,6 % + ZB) + (X + A) · (14,0 % + ZB) + (R̃ + X + A) · p − R̃ · (14,6 % + ZB)/2`.
+- Versorgungsbezüge `B` (Betriebsrenten, Kapitalleistungen zu je einem Zehntel über zehn Jahre):
+  KVdR: 0 bis zur Freigrenze `Fr_t = 197,75 · 12 · (1+g)^t` (1/20 der Bezugsgröße), darüber
+  `min(B − Fr_t, BBG − R̃) · (14,6 % + ZB) + min(B, BBG − R̃) · p` (§§ 226 Abs. 2, 229, 248 SGB V,
+  § 57 Abs. 1 SGB XI). Freiwillig: nach der Rente und vor den übrigen Einnahmen, `(14,6 % + ZB + p)`
+  ohne Freibetrag. Weitere Einnahmen (private Renten, Riester, Versicherungsleistungen mit dem
+  Zahlbetrag) zählen nur bei freiwillig Versicherten zu `X`.
 - Abziehbar als Basis-Vorsorgeaufwendungen: GKV-Beiträge voll, PKV nicht (Annahme).
+
+## Weitere Einkünfte
+
+Liste von Einkunftsquellen mit Produkt, Auszahlungsform (Einmalzahlung, lebenslange Rente bis zum
+Horizont, befristet über `n` Jahre), Beginnalter, Monatsbetrag bzw. Betrag und jährlicher Steigerung
+`s`: `W_t = 12 · b · (1+s)^(t−t₀)`. Beträge sind nominal laut Vertrag; Beträge in heutiger Kaufkraft
+werden mit der erwarteten Inflation `π̄` (geometrisches Mittel) umgerechnet:
+`W_t = 12 · b · (1+π̄)^t₀ · ((1+s)(1+π̄))^(t−t₀)`. Der Zahlungsplan ist damit in allen Pfaden gleich.
+Laufende Zahlungen decken den Konsum, Einmalzahlungen fließen nach Abzug der Steuern ins Depot.
+
+| Produkt                                                    | Einkommensteuer                                                                                                                                                                       | KV/PV                        |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| Betriebsrente: Direktversicherung, Pensionskasse, -fonds   | voll (§ 22 Nr. 5 Satz 1 EStG), Einmalzahlung ohne Fünftelregelung                                                                                                                     | Versorgungsbezug             |
+| Betriebsrente: Direktzusage, Unterstützungskasse           | § 19 EStG: ab 63 Versorgungsfreibetrag `min(Höchstbetrag, % · Bezug im ersten Jahr)` + Zuschlag nach Jahr des Versorgungsbeginns und 102 €, vorher 1.230 €; Kapitalabfindung mit § 34 | Versorgungsbezug             |
+| Riester, Altersvorsorgedepot                               | voll (§ 22 Nr. 5 Satz 1 EStG)                                                                                                                                                         | nur freiwillig Versicherte   |
+| Basisrente                                                 | Besteuerungsanteil nach Beginnjahr, Rentenfreibetrag aus dem ersten Jahr                                                                                                              | nur freiwillig Versicherte   |
+| Private Rentenversicherung, Lebensversicherung: lebenslang | Ertragsanteil nach Alter bei Beginn (§ 22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG)                                                                                               | nur freiwillig Versicherte   |
+| dto. Kapital- oder Ratenzahlung                            | Ertrag `W · max(0, 1 − Beiträge / Σ W)` (fondsgebunden · 0,85); hälftig zum Tarif ab 62 (Vertrag bis 2011: 60) und 12 Jahren, sonst Abgeltungsteuer; Vertrag vor 2005 steuerfrei      | nur freiwillig Versicherte   |
+| Sonstige Einnahme                                          | voll zum Tarif bzw. steuerfrei                                                                                                                                                        | steuerpflichtige: freiwillig |
+
+In der Erwerbsphase werden steuerpflichtige Teile mit 42 % zuzüglich Soli und Kirchensteuer
+angesetzt, weil das Erwerbseinkommen nicht modelliert ist; KV/PV entfällt dort.
 
 ## Langlebigkeit
 

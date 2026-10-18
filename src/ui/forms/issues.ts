@@ -66,6 +66,8 @@ export function tabOfIssue(path: string): InputTab {
       return 'konsum'
     case 'statePension':
       return 'rente'
+    case 'additionalIncome':
+      return 'einkuenfte'
     case 'health':
       return 'krankenversicherung'
     case 'tax':

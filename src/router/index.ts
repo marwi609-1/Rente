@@ -5,6 +5,7 @@ export const INPUT_TABS = [
   'vermoegen',
   'konsum',
   'rente',
+  'einkuenfte',
   'krankenversicherung',
   'steuern',
   'strategie',

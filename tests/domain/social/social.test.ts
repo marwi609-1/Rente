@@ -131,7 +131,79 @@ describe('Kranken- und Pflegeversicherung', () => {
     expect(kv({ phase: 'work', capitalBase: 50_000 })).toEqual({
       total: 0,
       onPension: 0,
+      onIncome: 0,
       deductible: 0,
     })
+  })
+})
+
+describe('KV/PV auf Versorgungsbezüge und weitere Einnahmen', () => {
+  const plan = createDefaultPlan(2026)
+  const base: HealthChargeInput = {
+    phase: 'pension',
+    health: plan.health,
+    childless: false,
+    pensionGross: 20_000,
+    capitalBase: 0,
+    yearIndex: 0,
+    params,
+  }
+  const kv = (patch: Partial<HealthChargeInput>, health?: Partial<HealthInsurance>) =>
+    healthCharge({ ...base, ...patch, health: { ...base.health, ...health } })
+  // KVdR: halber allgemeiner Satz und halber Zusatzbeitrag plus PV auf die Rente
+  const onPension = 20_000 * ((0.146 + 0.029) / 2 + 0.036)
+  const free = 197.75 * 12
+
+  it('KVdR: Betriebsrenten bis zur Freigrenze von 1/20 der Bezugsgröße beitragsfrei', () => {
+    expect(kv({ occupational: 2_000, occupationalRecurring: 2_000 }).total).toBeCloseTo(
+      onPension,
+      9,
+    )
+  })
+
+  it('KVdR: darüber voller Beitragssatz nach Freibetrag, PV auf den vollen Betrag', () => {
+    const charge = kv({ occupational: 6_000, occupationalRecurring: 6_000 })
+    const onOccupational = (6_000 - free) * 0.175 + 6_000 * 0.036
+    expect(charge.total).toBeCloseTo(onPension + onOccupational, 9)
+    expect(charge.onPension).toBeCloseTo(onPension, 9)
+    expect(charge.onIncome).toBeCloseTo(onOccupational, 9)
+    expect(charge.deductible).toBeCloseTo(charge.total, 9)
+  })
+
+  it('KVdR: Rente und Versorgungsbezüge zusammen höchstens bis zur BBG', () => {
+    const charge = kv({ pensionGross: 60_000, occupational: 20_000 })
+    const room = 69_750 - 60_000
+    expect(charge.total).toBeCloseTo(
+      60_000 * ((0.146 + 0.029) / 2 + 0.036) + room * 0.175 + room * 0.036,
+      9,
+    )
+  })
+
+  it('freiwillig: Rente, dann Versorgungsbezüge mit vollem Satz, dann übrige Einnahmen ermäßigt', () => {
+    const charge = kv(
+      { occupational: 10_000, capitalBase: 5_000, voluntaryIncome: 3_000 },
+      { kvdrEligible: false },
+    )
+    const expected =
+      20_000 * 0.175 +
+      10_000 * (0.175 + 0.036) +
+      8_000 * (0.14 + 0.029) +
+      28_000 * 0.036 -
+      20_000 * 0.0875
+    expect(charge.total).toBeCloseTo(expected, 9)
+  })
+
+  it('Überbrückung freiwillig: Versorgungsbezüge mit vollem Satz, Rest bis zur Mindestbemessung', () => {
+    const charge = kv({
+      phase: 'bridge',
+      pensionGross: 0,
+      occupational: 10_000,
+      capitalBase: 2_000,
+    })
+    const minimum = 1_318.33 * 12
+    expect(charge.total).toBeCloseTo(
+      10_000 * (0.175 + 0.036) + (minimum - 10_000) * (0.14 + 0.029 + 0.036),
+      9,
+    )
   })
 })

@@ -30,3 +30,23 @@ export function pensionIncome(gross: number, allowance: number, params: LegalPar
   const taxablePart = Math.max(0, gross - allowance)
   return taxablePart - Math.min(params.pensionTax.lumpSumExpenses, taxablePart)
 }
+
+/**
+ * Ertragsanteil einer privaten Leibrente nach dem bei Beginn vollendeten Lebensjahr (§ 22 Nr. 1
+ * Satz 3 Buchst. a Doppelbuchst. bb EStG).
+ */
+export function yieldShare(startAge: number, params: LegalParams): number {
+  let share = params.pensionTax.yieldShare[0].share
+  for (const step of params.pensionTax.yieldShare) if (startAge >= step.fromAge) share = step.share
+  return share
+}
+
+/**
+ * Versorgungsfreibetrag (Prozentsatz, Höchstbetrag) und Zuschlag nach dem Jahr des
+ * Versorgungsbeginns (§ 19 Abs. 2 Satz 3 EStG); vor dem ersten Tabellenjahr gilt dessen Zeile, nach
+ * dem letzten die letzte.
+ */
+export function occupationalAllowanceRow(startYear: number, params: LegalParams) {
+  const { firstYear, rows } = params.occupationalPension.allowance
+  return rows[Math.min(Math.max(startYear - firstYear, 0), rows.length - 1)]
+}

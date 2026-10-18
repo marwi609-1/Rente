@@ -324,3 +324,50 @@ describe('Plan-Schema', () => {
     })
   })
 })
+
+describe('Weitere Einkünfte im Schema', () => {
+  const entry = {
+    label: 'Betriebsrente',
+    product: 'bav-insurance' as const,
+    payout: 'lifelong' as const,
+    startAge: 67,
+    years: 10,
+    amount: 300,
+    growth: 0,
+    basis: 'nominal' as const,
+    contributions: 0,
+    contractYear: 2010,
+    fundLinked: false,
+  }
+
+  it('ergänzt in älteren Szenarien eine leere Liste', () => {
+    const old: Partial<RetirementPlan> = createDefaultPlan(2026)
+    delete old.additionalIncome
+    const result = validatePlan(old)
+    expect(result.ok && result.plan.additionalIncome).toEqual([])
+  })
+
+  it('erlaubt die Basisrente nur als lebenslange Rente', () => {
+    const issues = issuesOf(
+      withPlan((p) => (p.additionalIncome = [{ ...entry, product: 'basis', payout: 'lump-sum' }])),
+    )
+    expect(issues.map((i) => i.path)).toContain('additionalIncome.0.payout')
+  })
+
+  it('verlangt einen Beginn im Planungszeitraum', () => {
+    const issues = issuesOf(withPlan((p) => (p.additionalIncome = [{ ...entry, startAge: 40 }])))
+    expect(issues.map((i) => i.path)).toContain('additionalIncome.0.startAge')
+  })
+
+  it('verlangt bei Versicherungen einen Vertragsabschluss vor der ersten Auszahlung', () => {
+    const issues = issuesOf(
+      withPlan(
+        (p) =>
+          (p.additionalIncome = [
+            { ...entry, product: 'life-insurance', payout: 'lump-sum', contractYear: 2045 },
+          ]),
+      ),
+    )
+    expect(issues.map((i) => i.path)).toContain('additionalIncome.0.contractYear')
+  })
+})
