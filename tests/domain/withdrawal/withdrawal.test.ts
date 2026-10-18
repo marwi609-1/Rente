@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
 import { createDefaultPlan } from '@/domain/model/defaults'
-import { UnsupportedFeatureError } from '@/domain/model/errors'
 import { oneOffsAt, profileFactor } from '@/domain/withdrawal/profile'
 import { remainingYears, vpwFactor, withdrawalPolicy } from '@/domain/withdrawal/rules'
 
@@ -74,24 +73,17 @@ describe('withdrawalPolicy', () => {
   })
 
   it('fixed-real inflationiert den Netto-Konsum', () => {
-    const policy = withdrawalPolicy(plan.spending, plan.household)
-    expect(policy({ age: 60, portfolioValue: 1e6, inflationIndex: 1.25 })).toBe(125_000)
+    const policy = withdrawalPolicy(plan.spending, plan.household)()
+    expect(
+      policy({ age: 60, portfolioValue: 1e6, inflationIndex: 1.25, previousReturn: null }),
+    ).toBe(125_000)
   })
 
   it('vpw entnimmt den Annuitätenanteil des nominalen Depotwerts', () => {
     const spending = { ...plan.spending, rule: { type: 'vpw' as const, expectedRealReturn: 0.03 } }
-    const policy = withdrawalPolicy(spending, plan.household)
-    expect(policy({ age: 60, portfolioValue: 1e6, inflationIndex: 1.4 })).toBeCloseTo(
-      1e6 * vpwFactor(0.03, 36),
-      8,
-    )
-  })
-
-  it('meldet noch nicht unterstützte Regeln ausdrücklich', () => {
-    const spending = {
-      ...plan.spending,
-      rule: { type: 'percent-of-portfolio' as const, rate: 0.04 },
-    }
-    expect(() => withdrawalPolicy(spending, plan.household)).toThrow(UnsupportedFeatureError)
+    const policy = withdrawalPolicy(spending, plan.household)()
+    expect(
+      policy({ age: 60, portfolioValue: 1e6, inflationIndex: 1.4, previousReturn: null }),
+    ).toBeCloseTo(1e6 * vpwFactor(0.03, 36), 8)
   })
 })

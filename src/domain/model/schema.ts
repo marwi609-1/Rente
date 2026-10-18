@@ -308,11 +308,21 @@ const strategySchema = z.discriminatedUnion('type', [
       cash: share,
     })
     .superRefine((s, ctx) => {
-      if (!(s.startAge <= s.peakAge && s.peakAge <= s.endAge)) {
+      // Bei gleichen Altern gilt die spätere Stützstelle; fiele der Tiefpunkt auf das Endalter,
+      // würde er nie erreicht.
+      if (!(s.startAge <= s.peakAge && s.peakAge < s.endAge)) {
         ctx.addIssue({
           code: 'custom',
           path: ['peakAge'],
-          message: 'Für das Bond Tent muss Startalter ≤ Tiefpunktalter ≤ Endalter gelten.',
+          message: 'Für das Bond Tent muss Startalter ≤ Tiefpunktalter < Endalter gelten.',
+        })
+      }
+      if (s.peakEquity > Math.min(s.startEquity, s.endEquity)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['peakEquity'],
+          message:
+            'Die Aktienquote am Tiefpunkt des Bond Tents darf nicht über Start- und Endquote liegen.',
         })
       }
       checkEquityCash(ctx, s.startEquity, s.cash, ['startEquity'])

@@ -5,7 +5,6 @@ import { runDeterministic } from '@/domain/engine/deterministic'
 import { simulatePath } from '@/domain/engine/path'
 import { phaseForAge, simulationYears } from '@/domain/engine/timeline'
 import type { ReturnPath } from '@/domain/market/types'
-import { UnsupportedFeatureError } from '@/domain/model/errors'
 import type { RetirementPlan } from '@/domain/model/types'
 import { PlanValidationError } from '@/domain/model/validation'
 import { enginePlan } from '../../helpers/plans'
@@ -200,22 +199,6 @@ describe('runDeterministic', () => {
       p.household.planningHorizonAge = 50
     })
     expect(() => runDeterministic(plan, ctx)).toThrow(PlanValidationError)
-  })
-
-  it('meldet noch nicht unterstützte Optionen ausdrücklich', () => {
-    const glidepath = enginePlan((p) => {
-      p.strategy = { type: 'glidepath', points: [{ age: 60, equity: 0.5 }], cash: 0 }
-    })
-    expect(() => runDeterministic(glidepath, ctx)).toThrow(UnsupportedFeatureError)
-    const guytonKlinger = enginePlan((p) => {
-      p.spending.rule = {
-        type: 'guyton-klinger',
-        initialRate: 0.04,
-        guardBand: 0.2,
-        adjustment: 0.1,
-      }
-    })
-    expect(() => runDeterministic(guytonKlinger, ctx)).toThrow(UnsupportedFeatureError)
   })
 
   it('ist deterministisch', () => {

@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 
-import { UnsupportedFeatureError } from '@/domain/model/errors'
 import type { AssetVector } from '@/domain/model/types'
 import { allocationPolicy, fixedAllocation } from '@/domain/strategy/allocation'
 import { invest, sell, sharesOf, totalOf } from '@/domain/strategy/flows'
@@ -23,10 +22,9 @@ describe('fixedAllocation', () => {
     })
   })
 
-  it('meldet noch nicht unterstützte Strategien ausdrücklich', () => {
-    expect(() =>
-      allocationPolicy({ type: 'glidepath', points: [{ age: 60, equity: 0.5 }], cash: 0 }),
-    ).toThrow(UnsupportedFeatureError)
+  it('ist unabhängig vom Alter', () => {
+    const policy = allocationPolicy({ type: 'fixed', equity: 0.55, cash: 0.05 })
+    expect(policy(30)).toEqual(policy(90))
   })
 })
 

@@ -152,9 +152,61 @@ noch zu Ende.
 
 ## Umfang der Engine
 
-**A19 – Engine-Umfang.** Strategien außer `fixed` und Entnahmeregeln außer `fixed-real` und `vpw`
-werden bis M4 mit `UnsupportedFeatureError` abgelehnt statt still ersetzt. `vpw` ist vorgezogen,
-weil das Akzeptanzkriterium von M1 sie verlangt.
+**A19 – Engine-Umfang.** Seit M4 rechnet die Engine alle Strategien und Entnahmeregeln der
+Spezifikation; der Platzhalterfehler `UnsupportedFeatureError` aus M1–M3 ist entfallen. `vpw` war
+vorgezogen, weil das Akzeptanzkriterium von M1 sie verlangt.
+
+## Strategien und Entnahmeregeln
+
+**A50 – Gleiche Stützstellen.** Haben zwei Stützstellen dasselbe Alter, gilt ab diesem Alter die
+spätere. Beim Bond Tent mit `startAge = peakAge` gilt damit am Tiefpunktalter `peakEquity`. Das
+Schema verlangt zusätzlich `peakAge < endAge` (sonst würde der Tiefpunkt nie erreicht) und
+`peakEquity ≤ min(startEquity, endEquity)`, weil die Spezifikation den Tiefpunkt als Minimum der
+Aktienquote definiert.
+
+**A51 – Erwartete Netto-Lücke des Buckets.** Bei `fixed-real` ist sie der inflationierte
+Netto-Konsum mit Ausgabenprofil abzüglich der Netto-Rente, die sich nur aus Rente, Einkommensteuer
+und KV auf die Rente ergibt (ohne Kapitalerträge, die erst aus den Verkäufen entstehen). Bei den
+übrigen Regeln ist sie der depotfinanzierte Konsum laut Regel. Für das Auffüllen zum Jahresende
+wird der Regelbetrag des laufenden Jahres mit der Inflation des Jahres fortgeschrieben (`K_t ·
+I_{t+1}/I_t`), weil der Depotwert des Folgejahres noch nicht feststeht. Steuern auf künftige
+Verkäufe sind im Ziel nicht enthalten.
+
+**A52 – Bucket vor dem Ruhestand.** „Allokation, die sich zum Ruhestandsbeginn ergäbe“: Ziele aus
+der erwarteten Lücke im Ruhestandsalter, bezogen auf den aktuellen Depotwert. Der Preisindex wird
+mit der geometrischen Inflation (`market.inflation`) bis zum Ruhestand fortgeschrieben und die Lücke
+in Kaufkraft des laufenden Jahres zurückgerechnet. Die Allokation wird jährlich neu bestimmt und wie
+`fixed` mit Band rebalanciert.
+
+**A53 – Auffüllen der Töpfe.** Zum Jahresende wird Cash aus Anleihen bis zum Ziel aufgefüllt, dann
+Anleihen aus Aktien bis zum Ziel. Steuern und KV auf die Verkäufe zahlt Cash; reicht es nicht,
+mindern sie den Anleihekauf. Bestände über den Zielen bleiben stehen (keine Verkäufe aus vollen
+Töpfen). Überschüsse während des Jahres (etwa Rente über Bedarf) fließen in die Töpfe unter ihrem
+Ziel. Für `equity-up-only` zählt die Aktienrendite des Jahres nach TER. Das Rebalancing-Band gilt
+für den Bucket im Ruhestand nicht.
+
+**A54 – Guyton-Klinger.** Die Schwellen beziehen sich auf die Rate nach Inflationsausgleich (bzw.
+nach dessen Aussetzen), geprüft mit einer relativen Toleranz von 10⁻¹² gegen Gleitkommarauschen.
+Eine Kürzung und eine Erhöhung schließen sich im selben Jahr aus. „Letzte 15 Jahre vor dem
+Horizont“: höchstens 15 Restjahre einschließlich des laufenden (`H − a + 1 ≤ 15`). Das
+Ausgabenprofil skaliert den Regelbetrag nachträglich; der Zustand der Regel enthält es nicht.
+Maßgeblich für „negative Depotrendite“ ist die nominale Portfoliorendite des Vorjahres.
+
+**A55 – Floor-Ceiling real.** Untergrenze und Obergrenze sind `floorFactor` bzw. `ceilingFactor` ×
+`netConsumption` × `I_t`, also real fest.
+
+**A56 – Steueroptimiertes Rebalancing.** „Bevorzugt über Zu- und Abflüsse“ wird über drei Wege
+umgesetzt: Zuflüsse gehen in untergewichtete Klassen, Abflüsse kommen aus übergewichteten (A13),
+und beim Rebalancing in der Erwerbsphase zählt die bekannte Netto-Sparrate des Folgejahres zum
+Zielvolumen. Verkauft wird nur, was dieser Zufluss nicht ausgleichen kann; die Lücke schließt die
+Sparrate im Folgejahr. Entnahmen im Ruhestand werden nicht vorweggenommen, weil ihre Höhe vom
+Depotwert und den Steuern des Folgejahres abhängt. Ohne Vorwegnahme würde `taxAware` sogar mehr
+verkaufen: Zuflüsse stellen das Ziel genau her, und schon kleine Kursbewegungen erreichen das Band
+erneut, während ohne Flusssteuerung gegenläufige Drift das Band seltener auslöst.
+
+**A57 – Geldfluss beim Rebalancing.** Der Erlös nach Steuern wird vollständig in die Lücken
+investiert. Weil die Steuer per Fixpunktiteration (Toleranz 1 Cent) bestimmt wird, kann der Bestand
+um diese Toleranz neben dem exakten Ziel liegen; Geld entsteht oder verschwindet dabei nicht.
 
 ## Steuern
 

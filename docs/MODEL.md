@@ -1,8 +1,8 @@
 # Modell und Formeln
 
-Stand: Meilenstein 3 (deterministische Engine, Zufallszahlen, Marktmodelle, Monte Carlo, Steuern,
-gesetzliche Rente, Kranken- und Pflegeversicherung, Langlebigkeit). Weitere Strategien und
-Entnahmeregeln folgen mit Meilenstein 4. Rechtsstand und Quellen: `DATA_SOURCES.md`.
+Stand: Meilenstein 4 (deterministische Engine, Zufallszahlen, Marktmodelle, Monte Carlo, Steuern,
+gesetzliche Rente, Kranken- und Pflegeversicherung, Langlebigkeit, Strategien und Entnahmeregeln).
+Rechtsstand und Quellen: `DATA_SOURCES.md`.
 
 ## Zeitachse und Einheiten
 
@@ -52,30 +52,33 @@ Die TER gilt für Aktien- und Anleihe-ETFs, nicht für Cash.
 ## Jahresschritt
 
 Für jedes Jahr `t` mit Bestand `h = (h_A, h_B, h_C)` (Aktien-ETF, Anleihe-ETF, Cash, nominal),
-Einstand `B = (B_A, B_B)` und Zielallokation `w`:
+Einstand `B = (B_A, B_B)` und Zielallokation `w_t` der Strategie (siehe „Strategien“):
 
 1. **Phase** nach Alter (siehe oben). Ruhestand: `a_t ≥ retirementAge`.
 2. **Bedarf zu Jahresbeginn** (nominal):
    - Regelbetrag `K_t = Regel_t · f(a_t)` im Ruhestand, sonst 0 (`f` = Ausgabenprofil).
      Bei `fixed-real` ist `K_t` der gesamte Netto-Konsum; bei den übrigen Regeln ist `K_t` der
-     depotfinanzierte Konsum, der Gesamtkonsum ist `K_t + Netto-Rente`.
+     depotfinanzierte Konsum, der Gesamtkonsum ist `K_t + Netto-Rente`. Die Regel sieht den
+     Depotwert zu Jahresbeginn, `I_t` und die Portfoliorendite des Vorjahres.
    - Einmalausgaben `E_t = Σ amount(a_t) · I_t`, Sparrate (nur Erwerbsphase)
      `S_t = yearlyNet · (1 + realGrowth)^t · I_t`.
 3. **Einkommen:** Rente brutto `R_t` (siehe unten); Netto-Rente `R_t − ESt_t − KV_Rente,t`.
-4. **Brutto-Hochrechnung:** Verkauf `V` (Aufteilung nach Zielallokation bzw. steueroptimiert) so,
+4. **Brutto-Hochrechnung:** Verkauf `V` (Aufteilung nach Zielallokation bzw. steueroptimiert, beim
+   Bucket im Ruhestand der Reihe nach aus Cash, Anleihen, Aktien) so,
    dass `S_t + R_t + V = Konsum + E_t + G_t(V)`, wobei `G_t(V)` die bis dahin fälligen Steuern und
    KV-Beiträge des Jahres sind (Jahresabrechnung unten, mit den realisierten Gewinnen aus `V`).
    Gelöst per Fixpunktiteration `V ← clamp(Konsum + E_t + G_t(V) − S_t − R_t, 0, Σh)` bis
    `|ΔV| < 1 Cent`; nach 30 Iterationen wird eine Restabweichung bis 1 € akzeptiert, sonst Fehler.
    Reicht das Depot nicht, hat laufender Konsum Vorrang vor Einmalausgaben.
-5. **Überschuss** (Sparrate, Rente über Bedarf) wird gemäß Zielallokation investiert; der Einstand
-   steigt um den Kaufbetrag.
+5. **Überschuss** (Sparrate, Rente über Bedarf) wird gemäß Zielallokation investiert (mit `taxAware`
+   und beim Bucket im Ruhestand in die untergewichteten Klassen); der Einstand steigt um den
+   Kaufbetrag.
 6. **Renditen** nach TER.
 7. **Zum Jahresende:** Vorabpauschale je Fonds und Cash-Zinsen gehen in die Kapitalerträge ein, die
    Vorabpauschale erhöht den Einstand. Die Mehrsteuer (bzw. Erstattung) aus der Jahresabrechnung wird
    aus Cash bezahlt, reicht Cash nicht, durch einen hochgerechneten Verkauf.
-8. **Rebalancing** bei Erreichen des Bands auf `w · (Σh − ΔG)`; `ΔG` sind die Steuern und
-   KV-Beiträge auf die Rebalancing-Gewinne (Fixpunktiteration).
+8. **Rebalancing** bei Erreichen des Bands (siehe „Rebalancing“); beim Bucket im Ruhestand
+   stattdessen das Auffüllen der Töpfe für das Folgejahr (siehe „Bucket“).
 9. **Fortschreibung** von Verlustvortrag, Einstand und Preisindex `I_{t+1} = I_t · (1 + π_t)`.
 10. **Erfolgsprüfung** (nur Ruhestand): `F_t = max(0, minimumAcceptableConsumption · I_t − K̂_t)` mit
     dem finanzierten Gesamtkonsum `K̂_t`; unter 1 Cent gilt 0. Ein leeres Depot läuft weiter.
@@ -168,9 +171,72 @@ Mit dem Gesamtwert nach dem Fluss `V' = Σh ± x`:
 
 Ist das Depot im Ziel, sind beide Varianten identisch.
 
+### Rebalancing
+
+Erreicht `max_k |h_k / Σh − w_k|` das Band, wird auf das Zielvolumen
+
+```
+V = Σh + Z − ΔG
+```
+
+umgeschichtet. `ΔG` sind die Steuern und KV-Beiträge auf die Gewinne der Verkäufe
+(Fixpunktiteration). `Z` ist mit `taxAware` die bekannte Netto-Sparrate des Folgejahres, sofern es
+noch zur Erwerbsphase gehört: `Z = max(0, yearlyNet · (1 + realGrowth)^{t+1} − E_{t+1}) · I_{t+1}`;
+sonst `Z = 0`.
+
+- Verkäufe `s_k = max(0, h_k − w_k · V)`, Lücken `d_k = max(0, w_k · V − h_k)`.
+- Der Erlös nach Steuern `Σs − ΔG` füllt die Lücken anteilig: `Δ_k = (Σs − ΔG) · d_k / Σd`.
+- Wegen `Σd − Σs = V − Σh = Z − ΔG` gehen die Lücken ohne Zufluss genau auf (Bestand `w · V`).
+  Mit Zufluss bleibt die Lücke `Z` offen, die die Sparrate des Folgejahres schließt: Verkauft wird
+  nur, was dieser Zufluss nicht ausgleichen kann. `s_k` fällt mit wachsendem `Z`.
+
+## Strategien
+
+Alle Aktienquoten werden mit `interpolateLinear` gebildet: lineare Interpolation zwischen nach Alter
+sortierten Stützstellen, vor der ersten und nach der letzten konstant.
+
+- `fixed`: `w = (equity, 1 − equity − cash, cash)`.
+- `glidepath`: Aktienquote `e(a)` aus den Punkten, Cash fix, Anleihen der Rest.
+- `bond-tent`: Stützstellen `(startAge, startEquity)`, `(peakAge, peakEquity)`,
+  `(endAge, endEquity)`; das Schema verlangt `startAge ≤ peakAge < endAge` und
+  `peakEquity ≤ min(startEquity, endEquity)`, damit liegt das Minimum bei `peakAge`.
+
+Die Zielallokation gilt jeweils für das Alter zu Jahresbeginn.
+
+### Bucket
+
+- Zielbeträge: `Cash* = cashYears · L`, `Anleihen* = bondYears · L`, Aktien der Rest. `L` ist die
+  erwartete Netto-Lücke:
+  - `fixed-real`: `L = max(0, netConsumption · f(a) · I − R̂_net)` mit der Netto-Rente `R̂_net` aus
+    Rente, Einkommensteuer und KV auf die Rente (ohne Kapitalerträge);
+  - übrige Regeln: `L = K` (depotfinanzierter Konsum laut Regel).
+- Allokation zum Depotwert `P`: `c = min(1, Cash*/P)`, `b = min(1 − c, Anleihen*/P)`,
+  `e = 1 − c − b`.
+- Ruhestand: Entnahmen und Steuerverkäufe der Reihe nach aus Cash, Anleihen, Aktien. Zum Jahresende
+  Auffüllen auf die Ziele mit der Lücke des Folgejahres (`I_{t+1}`, Regelbetrag `K_t · I_{t+1}/I_t`):
+  - Anleihen → Cash: `min(h_B, max(0, Cash* − h_C))`,
+  - Aktien → Anleihen: `min(h_A, max(0, Anleihen* − h_B'))`, bei `equity-up-only` nur, wenn die
+    Aktienrendite des Jahres nach TER größer als `equityUpThreshold` war.
+  - Steuern auf die Verkäufe zahlt Cash; reicht es nicht, mindern sie den Anleihekauf.
+  - Bestände über den Zielen bleiben stehen.
+- Vor dem Ruhestand: feste Allokation aus den Zielen zu Ruhestandsbeginn. Dafür wird der Preisindex
+  mit der geometrischen Inflation `g_π` fortgeschrieben, `I_R = I_t · (1 + g_π)^{R − t}`; bei
+  `fixed-real` ist die Lücke `L(R, I_R) · I_t / I_R` (Kaufkraft des laufenden Jahres), bei den übrigen
+  Regeln der Regelbetrag auf den aktuellen Depotwert.
+
 ## Entnahmeregeln
 
 - `fixed-real`: `Regel_t = netConsumption · I_t`.
+- `percent-of-portfolio`: `Regel_t = rate · P_t` (Depotwert zu Jahresbeginn).
+- `floor-ceiling`: `Regel_t = clamp(rate · P_t, floorFactor · C_t, ceilingFactor · C_t)` mit
+  `C_t = netConsumption · I_t`.
+- `guyton-klinger` mit Anfangsrate `r₀`, Band `β`, Anpassung `α`:
+  - erstes Ruhestandsjahr: `W = r₀ · P`;
+  - danach `W̃ = W_{t−1} · I_t / I_{t−1}`; nach einem Jahr mit negativer Portfoliorendite und
+    `W̃ / P_t > r₀` entfällt der Inflationsausgleich (`W̃ = W_{t−1}`);
+  - `W̃ / P_t > r₀ (1 + β)` und mehr als 15 Restjahre (`H − a_t + 1 > 15`): `W = W̃ · (1 − α)`;
+  - `W̃ / P_t < r₀ (1 − β)`: `W = W̃ · (1 + α)`; sonst `W = W̃`.
+  - Schwellen mit relativer Toleranz `10⁻¹²`; der Zustand (`W`, `I`) wird je Pfad geführt.
 - `vpw`: vorschüssige Annuität über die Restjahre einschließlich des laufenden,
   `n_t = H − a_t + 1`, mit realem `r = expectedRealReturn` auf den nominalen Depotwert `P_t` zu
   Jahresbeginn:

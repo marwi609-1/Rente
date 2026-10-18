@@ -89,6 +89,43 @@ describe('Plan-Schema', () => {
       )
       expect(issues.map((i) => i.path)).toContain('strategy.endEquity')
     })
+
+    it('lehnt ein Bond Tent ab, dessen Tiefpunkt über Start- oder Endquote liegt', () => {
+      const issues = issuesOf(
+        withPlan((p) => {
+          p.strategy = {
+            type: 'bond-tent',
+            startAge: 50,
+            startEquity: 0.5,
+            peakAge: 57,
+            peakEquity: 0.6,
+            endAge: 70,
+            endEquity: 0.7,
+            cash: 0,
+          }
+        }),
+      )
+      expect(issues.map((i) => i.path)).toContain('strategy.peakEquity')
+    })
+
+    it('verlangt für das Bond Tent ein Tiefpunktalter vor dem Endalter', () => {
+      const tent = (startAge: number, peakAge: number) =>
+        withPlan((p) => {
+          p.strategy = {
+            type: 'bond-tent',
+            startAge,
+            startEquity: 0.7,
+            peakAge,
+            peakEquity: 0.4,
+            endAge: 70,
+            endEquity: 0.7,
+            cash: 0,
+          }
+        })
+      expect(validatePlan(tent(57, 57)).ok).toBe(true)
+      expect(issuesOf(tent(57, 70)).map((i) => i.path)).toContain('strategy.peakAge')
+      expect(issuesOf(tent(58, 57)).map((i) => i.path)).toContain('strategy.peakAge')
+    })
   })
 
   describe('Altersgrenzen', () => {

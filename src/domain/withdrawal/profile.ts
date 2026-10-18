@@ -1,3 +1,4 @@
+import { interpolateLinear } from '../interpolation'
 import type { AgeFactor, OneOff } from '../model/types'
 
 /**
@@ -7,15 +8,12 @@ import type { AgeFactor, OneOff } from '../model/types'
  */
 export function profileFactor(profile: readonly AgeFactor[], age: number): number {
   if (profile.length === 0) return 1
-  const first = profile[0]
-  const last = profile[profile.length - 1]
-  if (age <= first.age) return first.factor
-  if (age >= last.age) return last.factor
-  let i = 1
-  while (profile[i].age < age) i++
-  const lo = profile[i - 1]
-  const hi = profile[i]
-  return lo.factor + ((hi.factor - lo.factor) * (age - lo.age)) / (hi.age - lo.age)
+  return interpolateLinear(
+    profile,
+    age,
+    (p) => p.age,
+    (p) => p.factor,
+  )
 }
 
 /** Summe der Einmalausgaben in einem Alter (heutige Kaufkraft). */

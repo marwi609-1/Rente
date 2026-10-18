@@ -33,8 +33,9 @@ npm run dev
   - `random/` xoshiro128**, SplitMix32, Normal-, Gamma- und Chi-Quadrat-Verteilung, Cholesky
   - `market/` Lognormalparameter, geometrische Rendite, Renditemodelle (deterministisch, lognormal,
     Student-t, historische Sequenzen, Block-Bootstrap)
-  - `strategy/` Zielallokation, Zu- und Abflüsse, Rebalancing
-  - `withdrawal/` Entnahmeregeln, Ausgabenprofil, Einmalausgaben
+  - `strategy/` Zielallokation (fix, Glidepath, Bond Tent), Bucket, Zu- und Abflüsse, Rebalancing
+  - `withdrawal/` Entnahmeregeln (fix real, Prozent, Guyton-Klinger, VPW, Floor-Ceiling),
+    Ausgabenprofil, Einmalausgaben
   - `tax/` Abgeltungsteuer, Vorabpauschale, Verlustverrechnung, Einkommensteuer § 32a,
     Rentenbesteuerung, Jahresabrechnung mit Günstigerprüfung
   - `social/` gesetzliche Rente, Kranken- und Pflegeversicherung
@@ -57,7 +58,7 @@ npm run dev
 | M1          | Grundgerüst, Datenmodell, zod-Validierung, deterministische Engine | umgesetzt  |
 | M2          | Zufallszahlen, Marktmodelle, Monte Carlo im Worker                 | umgesetzt¹ |
 | M3          | Steuern, Rente, Krankenversicherung, Langlebigkeit                 | umgesetzt  |
-| M4          | Strategien und Entnahmeregeln                                      | offen      |
+| M4          | Strategien und Entnahmeregeln                                      | umgesetzt  |
 | M5          | UI, Dashboard, Charts                                              | offen      |
 | M6          | Szenarien, Heatmap, sichere Entnahme, PWR                          | offen      |
 

@@ -44,7 +44,7 @@ export async function runMonteCarlo(
   const { signal, onProgress } = options
   const chunkSize = Math.max(1, Math.floor(options.chunkSize ?? DEFAULT_CHUNK_SIZE))
   const plan = parsePlan(input)
-  // Nicht unterstützte Optionen und fehlende Daten schon hier melden, nicht erst im Worker.
+  // Ungültige Konfigurationen und fehlende Daten schon hier melden, nicht erst im Worker.
   createPathSimulator(plan, defaultEngineContext)
   createLongevityModel(plan.household, plan.simulation.seed, defaultEngineContext.mortality)
   const totalPaths = monteCarloPathCount(plan, defaultEngineContext)

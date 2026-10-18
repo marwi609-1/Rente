@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 
-import { UnsupportedFeatureError } from '@/domain/model/errors'
 import { PlanValidationError } from '@/domain/model/validation'
 import { runMonteCarlo, type MonteCarloProgress, type SimulationBackend } from '@/workers/runner'
 import { simulationTasks } from '@/workers/tasks'
@@ -82,16 +81,17 @@ describe('runMonteCarlo', () => {
     expect(calls).toHaveLength(0)
   })
 
-  it('validiert den Plan und meldet nicht unterstützte Optionen vor der Verteilung', async () => {
+  it('validiert den Plan und meldet fehlende Daten vor der Verteilung', async () => {
     const { backend, calls } = inProcessBackend()
     const invalid = enginePlan((p) => (p.household.retirementAge = 40))
     await expect(runMonteCarlo(invalid, [backend])).rejects.toBeInstanceOf(PlanValidationError)
-    const unsupported = enginePlan((p) => {
-      p.strategy = { type: 'glidepath', points: [{ age: 60, equity: 0.5 }], cash: 0 }
+    // Die Sterbetafel beginnt mit 18 Jahren.
+    const uncovered = enginePlan((p) => {
+      p.household.currentAge = 10
+      p.household.retirementAge = 60
+      p.household.longevity = { type: 'table' }
     })
-    await expect(runMonteCarlo(unsupported, [backend])).rejects.toBeInstanceOf(
-      UnsupportedFeatureError,
-    )
+    await expect(runMonteCarlo(uncovered, [backend])).rejects.toBeInstanceOf(RangeError)
     expect(calls).toHaveLength(0)
   })
 
