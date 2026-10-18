@@ -1,7 +1,7 @@
 # Modell und Formeln
 
-Stand: Meilenstein 1 (deterministische Engine). Spätere Meilensteine ergänzen Zufallsmodelle,
-Steuern, Rente, Krankenversicherung und Langlebigkeit.
+Stand: Meilenstein 2 (deterministische Engine, Zufallszahlen, Marktmodelle, Monte Carlo). Spätere
+Meilensteine ergänzen Steuern, Rente, Krankenversicherung, Langlebigkeit und weitere Strategien.
 
 ## Zeitachse und Einheiten
 
@@ -67,7 +67,9 @@ Zielallokation `w = (w_A, w_B, w_C)`:
    - sonst: Verkauf von `B_t − S_t` (höchstens der gesamte Bestand). Verfügbar sind `S_t + Erlös`.
    - Laufender Konsum hat Vorrang: `K̂_t = min(K_t, verfügbar)`,
      `Ê_t = min(E_t, verfügbar − K̂_t)`.
-4. **Renditen**: `h_k ← h_k · (1 + r_netto,k,t)`.
+4. **Renditen**: `h_k ← h_k · (1 + r_netto,k,t)`. Portfoliorendite des Jahres
+   `r_p,t = Σh_nach / Σh_vor − 1` auf das nach den Zahlungen investierte Kapital (`null`, wenn
+   keines investiert war).
 5. **Rebalancing**: Ist `max_k |h_k / Σh − w_k| ≥ band`, wird vollständig auf `w · Σh` umgeschichtet.
 6. **Preisindex**: `I_{t+1} = I_t · (1 + π_t)`.
 7. **Erfolgsprüfung** (nur Ruhestand): Fehlbetrag
@@ -121,7 +123,66 @@ Jede Jahreszeile ist nominal. Für die reale Darstellung (Euro von heute) werden
 - Bestände und Rebalancing zum Jahresende (`equity`, `bonds`, `cash`, `total`, `rebalanceSales`)
   durch `I_{t+1}` (`inflationIndexEnd`)
 
-geteilt. Die Rückrechnung multipliziert mit denselben Indizes.
+geteilt. Die Rückrechnung multipliziert mit denselben Indizes. `portfolioReturn` ist eine nominale
+Rate und wird nicht umgerechnet.
+
+## Zufallszahlen
+
+- **Generator:** xoshiro128** (Blackman/Vigna), 128 Bit Zustand, initialisiert aus einem 32-Bit-Seed
+  über vier Werte von SplitMix32 (`state += 0x9E3779B9`, Finalisierer mit den Konstanten
+  `0x85EBCA6B`, `0xC2B2AE35` aus MurmurHash3).
+- **Pfad-Seed:** `pathSeed(seed, p) = SplitMix32(seed + p)`, erster Wert. Jeder Pfad hat damit einen
+  eigenen Strom, der nur von `simulation.seed` und dem Pfadindex abhängt.
+- **Gleichverteilung:** `u = (⌊x₁/2⁵⌋ · 2²⁶ + ⌊x₂/2⁶⌋ + ½) / 2⁵³ ∈ (0, 1)` aus zwei 32-Bit-Werten.
+- **Normalverteilung:** Box-Muller, `z₁ = √(−2 ln u₁) · cos(2π u₂)`, `z₂ = √(−2 ln u₁) · sin(2π u₂)`;
+  `z₂` wird für den nächsten Aufruf gepuffert.
+- **Gamma/Chi-Quadrat:** Marsaglia/Tsang (2000) für Formparameter ≥ 1, sonst
+  `Gamma(a) = Gamma(a+1) · U^(1/a)`; `χ²_ν = 2 · Gamma(ν/2)`.
+
+## Marktmodelle
+
+Alle Modelle erzeugen je Jahr gemeinsam Aktien, Anleihen, Cash und Inflation.
+
+- **deterministic:** jährlich die geometrische Rendite (siehe oben); im Monte Carlo genügt ein Pfad.
+- **lognormal:** `L` = Cholesky-Faktor der Korrelationsmatrix (Reihenfolge Aktien, Anleihen, Cash,
+  Inflation). Je Jahr vier unabhängige Standardnormale `z`, `x = L z`,
+  `1 + r_k = exp(μ_ln,k + σ_ln,k · x_k)`. Die Korrelation gilt damit exakt für die Log-Renditen; für
+  einfache Renditen weicht sie bei den Default-Parametern um weniger als 0,001 ab.
+- **student-t:** wie lognormal, zusätzlich je Jahr eine gemeinsame Variable `W ~ χ²_ν`:
+  `x = L z · √((ν − 2) / W)`. `x` ist multivariat t-verteilt mit Varianz 1 je Komponente und
+  derselben Korrelationsmatrix.
+- **historical-sequence:** Datenfenster `fromYear … toYear` (aus `market.bootstrap`, sonst alle
+  Daten) mit `n` Jahren. Pfad `p` nutzt im Jahr `t` die Jahreszeile `(p + t) mod n`; es gibt `n`
+  Pfade, `simulation.paths` wird ignoriert.
+- **block-bootstrap:** stationärer Bootstrap (Politis/Romano 1994) im selben Datenfenster. Start an
+  zufälliger Zeile; danach mit Wahrscheinlichkeit `1/L` (`L = meanBlockLength`) Sprung an eine
+  zufällige Zeile, sonst die Folgezeile `(i + 1) mod n`. Die Blocklänge ist geometrisch mit Mittel `L`.
+
+Ziehungsreihenfolge je Jahr (parametrische Modelle): vier Normale, dann gegebenenfalls `W`.
+
+## Monte Carlo und Kennzahlen
+
+Die Pfade werden in Paketen (Standard 250 Pfade) auf einen Pool von Web Workern verteilt
+(`min(4, Kerne − 1)`). Jeder Pfad hängt nur von Seed und Pfadindex ab, das Ergebnis ist daher
+bitgleich unabhängig von Paketgröße und Worker-Zahl. Je Pfad und Jahr gespeichert werden
+(`Float64Array`, Index `p · N + t`): `total` (nominal), `totalReal = total / I_{t+1}`,
+`consumptionReal = K̂_t / I_t`, `shortfallReal = F_t / I_t` sowie die Anteile von Aktien, Anleihen
+und Cash zum Jahresende.
+
+- **Perzentile** 5, 10, 25, 50, 75, 90, 95 je Jahr und Reihe, lineare Interpolation zwischen den
+  Ordnungsstatistiken (Hyndman/Fan Typ 7): `h = (N − 1) p`, `x_⌊h⌋ + (h − ⌊h⌋)(x_⌊h⌋+1 − x_⌊h⌋)`.
+- **Erfolgsquote** `p̂` = Anteil der Pfade ohne Fehljahr bis zum Horizont, Standardfehler
+  `√(p̂(1 − p̂)/N)`.
+- **Vermögen mit 90 / 95:** Median, P10 und P90 von `totalReal` am Ende des Jahres, in dem das Alter
+  erreicht wird (nur innerhalb des Horizonts).
+- **Frühester Kapitalverzehr:** Erschöpfungsalter je Pfad = erstes Jahresende mit Depot < 1 Cent
+  (nie erschöpft = +∞); gemeldet wird die Ordnungsstatistik an Position `⌈0,1 · N⌉`, also das Alter,
+  bis zu dem 10 % der Pfade erschöpft sind; +∞ wird als „nicht erreicht“ ausgegeben.
+- **Fehlbetrag:** über die gescheiterten Pfade Median und P90 der Summe der realen Fehlbeträge sowie
+  die mittlere Zahl der Fehljahre.
+- **Expected Shortfall:** Mittel des realen Endvermögens der `⌈0,1 · N⌉` schlechtesten Pfade.
+- **Portfolio-CAGR:** je Pfad `exp(Σ ln(1 + r_p,t) / m) − 1` über die `m` Jahre mit investiertem
+  Kapital, real mit `ln(1 + r_p,t) − ln(1 + π_t)`; ausgewiesen wird der Median über die Pfade.
 
 ## Geschlossene Formeln (Testanker)
 

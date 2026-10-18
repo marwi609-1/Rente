@@ -142,6 +142,30 @@ describe('Jahresschritt', () => {
     expect(rows[0].cash).toBe(250)
   })
 
+  it('weist die Portfoliorendite auf das nach den Zahlungen investierte Kapital aus', () => {
+    const plan = enginePlan((p) => {
+      p.household.currentAge = 60
+      p.household.retirementAge = 60
+      p.household.planningHorizonAge = 62
+      p.portfolio.totalValue = 1_000
+      p.spending.netConsumption = 600
+      p.spending.minimumAcceptableConsumption = 0
+      p.strategy = { type: 'fixed', equity: 0.5, cash: 0.25 }
+      p.market.equity.ter = 0
+      p.market.bonds.ter = 0
+    })
+    const rows = simulatePath(
+      plan,
+      constantReturns(3, { equity: 0.1, bonds: 0.04, cash: 0.02, inflation: 0 }),
+    )
+    // 0,5 · 10 % + 0,25 · 4 % + 0,25 · 2 %
+    expect(rows[0].portfolioReturn).toBeCloseTo(0.065, 12)
+    // Im zweiten Jahr reicht das restliche Depot (426 €) nicht mehr und wird vollständig entnommen.
+    expect(rows[1].total).toBe(0)
+    expect(rows[1].portfolioReturn).toBeNull()
+    expect(rows[2].portfolioReturn).toBeNull()
+  })
+
   it('rebalanciert nur bei Erreichen des Bands', () => {
     const plan = enginePlan((p) => {
       p.household.currentAge = 60

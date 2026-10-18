@@ -10,6 +10,7 @@ import {
   mdiPiggyBank,
 } from '@mdi/js'
 
+import { historicalUsMeta } from '@/data/historical'
 import { geometricMean } from '@/domain/market/returns'
 import type { RetirementPlan, StrategyConfig } from '@/domain/model/types'
 import { usePlanStore } from '@/stores/plan'
@@ -20,6 +21,7 @@ import {
   strategyLabels,
   withdrawalRuleLabels,
 } from '@/ui/labels'
+import { historicalDataNotice } from '@/ui/texts'
 import { formatEuro, formatNumber, formatPercent } from '@/utils/format'
 
 const { plan, validation } = storeToRefs(usePlanStore())
@@ -149,6 +151,12 @@ function cards(p: RetirementPlan) {
 }
 
 const summary = computed(() => cards(plan.value))
+
+const historicalNotice = computed(() =>
+  plan.value.market.type === 'historical-sequence' || plan.value.market.type === 'block-bootstrap'
+    ? historicalDataNotice(historicalUsMeta.firstYear, historicalUsMeta.lastYear)
+    : null,
+)
 </script>
 
 <template>
@@ -177,6 +185,17 @@ const summary = computed(() => cards(plan.value))
           <code v-if="issue.path">{{ issue.path }}</code> {{ issue.message }}
         </li>
       </ul>
+    </v-alert>
+
+    <v-alert
+      v-if="historicalNotice"
+      type="info"
+      variant="tonal"
+      density="compact"
+      class="mb-4"
+      data-testid="historical-notice"
+    >
+      {{ historicalNotice }}
     </v-alert>
 
     <v-row>

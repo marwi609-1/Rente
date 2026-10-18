@@ -30,23 +30,31 @@ npm run dev
 - `src/domain/` – framework-freie Rechenlogik (reines TypeScript, deterministisch, unit-getestet).
   ESLint verbietet dort Importe aus Vue, Pinia, Vuetify und den App-Schichten.
   - `model/` Typen, zod-Schemas, Default-Szenario
-  - `random/` Cholesky-Zerlegung
-  - `market/` Lognormalparameter, geometrische Rendite, deterministischer Renditepfad
+  - `random/` xoshiro128**, SplitMix32, Normal-, Gamma- und Chi-Quadrat-Verteilung, Cholesky
+  - `market/` Lognormalparameter, geometrische Rendite, Renditemodelle (deterministisch, lognormal,
+    Student-t, historische Sequenzen, Block-Bootstrap)
   - `strategy/` Zielallokation, Zu- und Abflüsse, Rebalancing
   - `withdrawal/` Entnahmeregeln, Ausgabenprofil, Einmalausgaben
-  - `engine/` Jahresschritt, Pfad, Umrechnung real/nominal
+  - `engine/` Jahresschritt, Pfad, Monte Carlo, Kennzahlen, Umrechnung real/nominal
+- `src/workers/` Web-Worker-Pool (Comlink) und Ablaufsteuerung mit Fortschritt und Abbruch
+- `src/data/` historische US-Renditen 1871–2025 ([Quellen](docs/DATA_SOURCES.md)),
+  erzeugt mit `scripts/build_historical_us.py`
 - `src/stores/` Pinia-Stores (Orchestrierung, keine Rechenlogik)
 - `src/ui/` Ansichten und Komponenten (Vue 3, Vuetify 3)
 - `tests/` spiegelt `src/domain`, dazu Komponententests unter `tests/ui`
-- `docs/` [Modell und Formeln](docs/MODEL.md), [Annahmen](docs/ASSUMPTIONS.md)
+- `docs/` [Modell und Formeln](docs/MODEL.md), [Annahmen](docs/ASSUMPTIONS.md),
+  [Datenquellen](docs/DATA_SOURCES.md)
 
 ## Stand
 
-| Meilenstein | Inhalt                                                             | Status    |
-| ----------- | ------------------------------------------------------------------ | --------- |
-| M1          | Grundgerüst, Datenmodell, zod-Validierung, deterministische Engine | umgesetzt |
-| M2          | Zufallszahlen, Marktmodelle, Monte Carlo im Worker                 | offen     |
-| M3          | Steuern, Rente, Krankenversicherung, Langlebigkeit                 | offen     |
-| M4          | Strategien und Entnahmeregeln                                      | offen     |
-| M5          | UI, Dashboard, Charts                                              | offen     |
-| M6          | Szenarien, Heatmap, sichere Entnahme, PWR                          | offen     |
+| Meilenstein | Inhalt                                                             | Status     |
+| ----------- | ------------------------------------------------------------------ | ---------- |
+| M1          | Grundgerüst, Datenmodell, zod-Validierung, deterministische Engine | umgesetzt  |
+| M2          | Zufallszahlen, Marktmodelle, Monte Carlo im Worker                 | umgesetzt¹ |
+| M3          | Steuern, Rente, Krankenversicherung, Langlebigkeit                 | offen      |
+| M4          | Strategien und Entnahmeregeln                                      | offen      |
+| M5          | UI, Dashboard, Charts                                              | offen      |
+| M6          | Szenarien, Heatmap, sichere Entnahme, PWR                          | offen      |
+
+¹ Der Plausibilitätsanker (historische Sequenzen ab 1926, 4 %, 50/50) ergibt mit den Shiller-Daten
+91,5 % statt der geforderten ≥ 95 %; siehe [A26](docs/ASSUMPTIONS.md).

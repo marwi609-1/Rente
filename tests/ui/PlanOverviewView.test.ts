@@ -34,4 +34,16 @@ describe('Planübersicht', () => {
     expect(issues.text()).toContain('household.retirementAge')
     expect(issues.text()).toContain('Ruhestandsalter')
   })
+
+  it('weist bei historischen Marktmodellen auf Survivorship-Bias und Wechselkurse hin', async () => {
+    const pinia = createPinia()
+    const wrapper = await mountWithApp(inApp(PlanOverviewView), pinia)
+    expect(wrapper.find('[data-testid="historical-notice"]').exists()).toBe(false)
+    usePlanStore(pinia).plan.market.type = 'block-bootstrap'
+    await wrapper.vm.$nextTick()
+    const notice = wrapper.find('[data-testid="historical-notice"]')
+    expect(notice.text()).toContain('Survivorship-Bias')
+    expect(notice.text()).toContain('Wechselkurseffekte')
+    expect(notice.text()).toContain('1871–2025')
+  })
 })

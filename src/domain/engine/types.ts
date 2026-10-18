@@ -28,6 +28,11 @@ export interface YearResult {
   oneOffSpending: EUR
   /** Fehlbetrag gegenüber dem Mindestkonsum; > 0 kennzeichnet ein Fehljahr */
   shortfall: EUR
+  /**
+   * Nominale Rendite des nach den Zahlungen zu Jahresbeginn investierten Kapitals (nach TER);
+   * `null`, wenn kein Kapital investiert war
+   */
+  portfolioReturn: Rate | null
   /** Preisindex zu Jahresbeginn (Startjahr = 1); Bezugsgröße der Zahlungen zu Jahresbeginn */
   inflationIndex: number
   /** Preisindex zum Jahresende; Bezugsgröße der Bestände und des Rebalancings */
