@@ -5,6 +5,7 @@ import { flushPromises, type VueWrapper } from '@vue/test-utils'
 
 import App from '@/App.vue'
 import { DISCLAIMER } from '@/ui/texts'
+import { APP_VERSION } from '@/utils/version'
 import { mountWithApp } from '../helpers/mount'
 
 let current: VueWrapper | null = null
@@ -31,6 +32,7 @@ describe('App-Shell', () => {
   it('startet mit dem Dashboard und zeigt den Fortschritt der Berechnung', async () => {
     const { wrapper } = await mountApp()
     expect(wrapper.text()).toContain('Dashboard')
+    expect(wrapper.get('[data-testid="app-version"]').text()).toBe(`Version ${APP_VERSION}`)
     expect(wrapper.find('[data-testid="results-placeholder"]').exists()).toBe(true)
     expect(wrapper.get('[data-testid="run-status"]').text()).toContain('Berechnung')
   })

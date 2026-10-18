@@ -77,3 +77,11 @@ akzeptiert, siehe [A26](docs/ASSUMPTIONS.md).
 
 ² Ohne Migration des Ursprungsformats (v1 → v2); sie entfällt auf Entscheidung des Nutzers, siehe
 [A77](docs/ASSUMPTIONS.md).
+
+## Versionierung
+
+Die Versionsnummer steht nur in `package.json`, als Semver, und wird beim Build eingesetzt
+(`vite.config.ts`). Das Dashboard zeigt sie als Major.Minor mit zweistelliger Minor-Nummer:
+`1.3.0` → 1.03, `1.10.0` → 1.10; eine Patch-Nummer wird angehängt (`1.3.1` → 1.03.1). Die nächste
+Version setzt `npm version minor --no-git-tag-version` (bzw. `major`, `patch`); der Befehl
+aktualisiert `package.json` und `package-lock.json`.
