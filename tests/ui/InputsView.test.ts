@@ -117,11 +117,30 @@ describe('Eingabeformulare', () => {
   })
 })
 
-describe('Hinweise im Formular', () => {
-  it('warnt, wenn der feste Netto-Konsum unter dem Mindestkonsum liegt', async () => {
-    const { wrapper } = await open('konsum')
-    expect(wrapper.find('[data-testid="below-minimum"]').exists()).toBe(false)
-    await type(wrapper, 'spending.netConsumption', '60.000')
-    expect(wrapper.find('[data-testid="below-minimum"]').exists()).toBe(true)
+describe('Mindestkonsum', () => {
+  it('lehnt bei festem realem Konsum einen Mindestkonsum über dem Netto-Konsum ab', async () => {
+    const { wrapper, store } = await open('konsum')
+    const messages = await type(wrapper, 'spending.netConsumption', '40.000')
+    expect(messages()).toBe('')
+    expect(
+      wrapper.get('[data-path="spending.minimumAcceptableConsumption"]').find('.v-messages').text(),
+    ).toContain('darf der Mindestkonsum nicht über dem Netto-Konsum liegen')
+    expect(store.validation.ok).toBe(false)
+  })
+})
+
+describe('Langlebigkeit', () => {
+  it('passt den Gompertz-Hinweis an Jahrgang und Geschlecht an und übernimmt die Werte', async () => {
+    const { wrapper, store } = await open('haushalt')
+    await type(wrapper, 'household.currentAge', '53')
+    const hint = () => wrapper.get('[data-testid="gompertz-fit"]').text()
+    expect(hint()).toContain(`Jahrgang ${store.plan.household.startYear - 53} (männlich)`)
+    store.plan.household.sex = 'w'
+    await flushPromises()
+    expect(hint()).toContain('(weiblich)')
+    await wrapper.get('[data-testid="gompertz-fit"] button').trigger('click')
+    const l = store.plan.household.longevity
+    expect(l.type === 'gompertz' && l.modalAge > 90).toBe(true)
+    expect(wrapper.find('[data-testid="gompertz-fit"] button').exists()).toBe(false)
   })
 })

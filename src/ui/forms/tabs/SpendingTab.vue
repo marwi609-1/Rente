@@ -24,12 +24,6 @@ const ruleItems = (Object.keys(withdrawalRuleLabels) as WithdrawalRule['type'][]
   value,
 }))
 
-const belowMinimum = computed(
-  () =>
-    spending.value.rule.type === 'fixed-real' &&
-    spending.value.netConsumption < spending.value.minimumAcceptableConsumption,
-)
-
 const ruleExplanation = computed(() =>
   spending.value.rule.type === 'fixed-real'
     ? 'Der gesamte Netto-Konsum ist real fest; das Depot deckt die Lücke zur Netto-Rente.'
@@ -54,22 +48,10 @@ const ruleExplanation = computed(() =>
         label="Mindestkonsum"
         unit="eur-year"
         path="spending.minimumAcceptableConsumption"
-        help="Erfolgskriterium für alle Regeln: Liegt der finanzierte Gesamt-Netto-Konsum eines Jahres darunter, ist es ein Fehljahr. Heutige Kaufkraft, ohne Ausgabenprofil."
+        help="Untergrenze, ab der ein Ruhestandsjahr als gescheitert zählt (Fehljahr): Liegt der tatsächlich finanzierte Netto-Konsum aus Rente und Depot darunter, ist das Jahr ein Fehljahr; ein Pfad ist erfolgreich, wenn er bis zum Horizont keines hat. Gemeinsames Erfolgskriterium aller Regeln – flexible Regeln kürzen den Konsum in schlechten Jahren, statt das Depot aufzubrauchen, und gelten erst unterhalb dieser Grenze als gescheitert. Typisch liegt er unter dem Netto-Konsum (z. B. 70–85 % davon); bei festem realem Konsum darf er ihn nicht übersteigen. Heutige Kaufkraft, ohne Ausgabenprofil."
       />
     </v-col>
   </v-row>
-
-  <v-alert
-    v-if="belowMinimum"
-    type="warning"
-    variant="tonal"
-    density="compact"
-    class="mb-4"
-    data-testid="below-minimum"
-  >
-    Der Netto-Konsum liegt unter dem Mindestkonsum: Bei festem realem Konsum ist damit jedes
-    Ruhestandsjahr ein Fehljahr.
-  </v-alert>
 
   <h3 class="text-subtitle-1 mb-2">Entnahmeregel</h3>
   <v-row dense>

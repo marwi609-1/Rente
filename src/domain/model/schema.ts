@@ -103,25 +103,37 @@ function strictlyIncreasingAges(items: readonly { age: number }[]): number | nul
   return null
 }
 
-const spendingSchema = z.object({
-  netConsumption: eur,
-  minimumAcceptableConsumption: eur,
-  rule: withdrawalRuleSchema,
-  ageProfile: z
-    .array(z.object({ age, factor: z.number().min(0).max(5) }))
-    .superRefine((points, ctx) => {
-      const i = strictlyIncreasingAges(points)
-      if (i !== null) {
-        ctx.addIssue({
-          code: 'custom',
-          path: [i, 'age'],
-          message:
-            'Die Stützstellen des Ausgabenprofils müssen nach Alter aufsteigend sortiert sein.',
-        })
-      }
-    }),
-  oneOffs: z.array(z.object({ age, amount: eur, label: z.string().max(100) })),
-})
+const spendingSchema = z
+  .object({
+    netConsumption: eur,
+    minimumAcceptableConsumption: eur,
+    rule: withdrawalRuleSchema,
+    ageProfile: z
+      .array(z.object({ age, factor: z.number().min(0).max(5) }))
+      .superRefine((points, ctx) => {
+        const i = strictlyIncreasingAges(points)
+        if (i !== null) {
+          ctx.addIssue({
+            code: 'custom',
+            path: [i, 'age'],
+            message:
+              'Die Stützstellen des Ausgabenprofils müssen nach Alter aufsteigend sortiert sein.',
+          })
+        }
+      }),
+    oneOffs: z.array(z.object({ age, amount: eur, label: z.string().max(100) })),
+  })
+  .superRefine((s, ctx) => {
+    // Bei festem realem Konsum wäre sonst jedes Ruhestandsjahr per Definition ein Fehljahr.
+    if (s.rule.type === 'fixed-real' && s.minimumAcceptableConsumption > s.netConsumption) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['minimumAcceptableConsumption'],
+        message:
+          'Bei festem realem Konsum darf der Mindestkonsum nicht über dem Netto-Konsum liegen; sonst wäre jedes Ruhestandsjahr ein Fehljahr.',
+      })
+    }
+  })
 
 const statePensionSchema = z
   .object({

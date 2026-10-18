@@ -132,6 +132,7 @@ describe('deterministische Engine gegen geschlossene Formeln (σ = 0)', () => {
     const adjust = (p: RetirementPlan) => {
       zeroVol(p)
       p.spending.netConsumption = 60_000
+      p.spending.minimumAcceptableConsumption = 0
     }
     const plain = runDeterministic(enginePlan(adjust), ctx)
     const aware = runDeterministic(
