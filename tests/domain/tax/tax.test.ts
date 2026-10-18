@@ -224,6 +224,7 @@ describe('Weitere Einkünfte in der Jahresabrechnung', () => {
   const noHealth = (s: ChargeSettings) =>
     (s.health = {
       bridgePhase: { type: 'pkv', monthlyPremium: 0, premiumGrowth: 0 },
+      pensionPhase: { type: 'gkv' },
       kvdrEligible: true,
       paramsGrowth: 0,
     })

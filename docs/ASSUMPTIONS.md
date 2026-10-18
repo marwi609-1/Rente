@@ -303,6 +303,16 @@ Versorgungsbezüge; das Modell behandelt das Depot daher wie Riester. Auszahlpla
 und bis zu 30 % Einmalzahlung zu Beginn sind Hinweise der Eingabe, keine Prüfregeln. Die
 Einzelheiten (BMF-Anwendungsschreiben) standen bei Umsetzung noch aus.
 
+**A84 – PKV ab Rentenbeginn.** Wer privat versichert ist, kann die PKV für die Rentenphase wählen
+(Szenarien vor Version 1.06: GKV). Der Monatsbeitrag gilt in heutigen Werten und steigt ab heute mit
+der angegebenen Rate; Beitragsänderungen beim Übergang in den Ruhestand (Wegfall von
+Krankentagegeld und gesetzlichem Zuschlag ab 60, Beitragsentlastungstarife) sind im eingegebenen
+Beitrag zu berücksichtigen. Die Rentenversicherung zahlt einen steuerfreien Zuschuss in Höhe des
+halben allgemeinen Beitragssatzes plus halben durchschnittlichen Zusatzbeitrags auf die
+gesetzliche Rente, höchstens die Hälfte des Beitrags (§ 106 SGB VI); Betriebsrenten zählen dafür
+nicht. Der Basisanteil des Beitrags ist wie in der Überbrückung unbekannt und konservativ nicht als
+Vorsorgeaufwand abgezogen.
+
 ## Oberfläche und Auswertung
 
 **A60 – Neuberechnung.** Jede Eingabeänderung startet 500 ms nach der letzten Änderung eine neue

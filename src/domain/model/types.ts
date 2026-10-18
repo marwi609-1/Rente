@@ -169,9 +169,15 @@ export interface AdditionalIncome {
 export type BridgeHealthInsurance =
   { type: 'gkv-voluntary' } | { type: 'pkv'; monthlyPremium: EUR; premiumGrowth: Rate }
 
+/** Ab Rentenbeginn: GKV (KVdR oder freiwillig) oder weiter PKV. */
+export type PensionHealthInsurance =
+  { type: 'gkv' } | { type: 'pkv'; monthlyPremium: EUR; premiumGrowth: Rate }
+
 export interface HealthInsurance {
   /** zwischen retirementAge und Rentenbeginn */
   bridgePhase: BridgeHealthInsurance
+  /** ab Rentenbeginn */
+  pensionPhase: PensionHealthInsurance
   /** Vorversicherungszeit für die KVdR erfüllt */
   kvdrEligible: boolean
   /** Fortschreibung Mindestbemessung/BBG p. a. */

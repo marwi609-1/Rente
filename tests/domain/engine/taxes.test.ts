@@ -36,7 +36,12 @@ function bridgePlan(adjust: (p: RetirementPlan) => void = () => {}): RetirementP
       guenstigerpruefung: false,
       basiszins: { type: 'fixed', rate: 0 },
     }
-    p.health = { bridgePhase: { type: 'gkv-voluntary' }, kvdrEligible: true, paramsGrowth: 0 }
+    p.health = {
+      bridgePhase: { type: 'gkv-voluntary' },
+      pensionPhase: { type: 'gkv' },
+      kvdrEligible: true,
+      paramsGrowth: 0,
+    }
     adjust(p)
   })
 }

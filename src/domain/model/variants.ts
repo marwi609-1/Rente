@@ -5,6 +5,7 @@ import type {
   HealthInsurance,
   Household,
   Longevity,
+  PensionHealthInsurance,
   StrategyConfig,
   WithdrawalRule,
 } from './types'
@@ -89,6 +90,21 @@ export function defaultBridgeInsurance(
   health: HealthInsurance,
 ): BridgeHealthInsurance {
   return type === 'pkv' ? { type, monthlyPremium: 0, premiumGrowth: health.paramsGrowth } : { type }
+}
+
+/**
+ * Beim Wechsel in die PKV ab Rentenbeginn gilt zunächst der Beitrag der Überbrückung, sofern dort
+ * PKV gewählt ist; sonst ist er einzutragen.
+ */
+export function defaultPensionInsurance(
+  type: PensionHealthInsurance['type'],
+  health: HealthInsurance,
+): PensionHealthInsurance {
+  if (type === 'gkv') return { type }
+  const bridge = health.bridgePhase
+  return bridge.type === 'pkv'
+    ? { type, monthlyPremium: bridge.monthlyPremium, premiumGrowth: bridge.premiumGrowth }
+    : { type, monthlyPremium: 0, premiumGrowth: health.paramsGrowth }
 }
 
 /** Fester Basiszins: der veröffentlichte Wert des Startjahres aus dem Default-Szenario. */

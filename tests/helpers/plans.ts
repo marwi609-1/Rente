@@ -15,6 +15,7 @@ export function enginePlan(adjust: (plan: RetirementPlan) => void = () => {}): R
   plan.statePension.monthlyGrossProjected = 0
   plan.health = {
     bridgePhase: { type: 'pkv', monthlyPremium: 0, premiumGrowth: 0 },
+    pensionPhase: { type: 'gkv' },
     kvdrEligible: true,
     paramsGrowth: 0,
   }
