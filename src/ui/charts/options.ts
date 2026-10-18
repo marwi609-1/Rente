@@ -26,6 +26,11 @@ function tooltipRow(color: string | null, name: string, value: string): string {
   return `<div style="display:flex;justify-content:space-between;gap:16px"><span>${key}${escapeHtml(name)}</span><strong>${escapeHtml(value)}</strong></div>`
 }
 
+/** eingerückte Unterzeile, z. B. „davon Umschichtung“ */
+function tooltipDetailRow(name: string, value: string): string {
+  return `<div style="display:flex;justify-content:space-between;gap:16px;padding-left:18px;opacity:0.8"><span>${escapeHtml(name)}</span><span>${escapeHtml(value)}</span></div>`
+}
+
 function tooltipHeader(text: string): string {
   return `<div style="margin-bottom:4px">${escapeHtml(text)}</div>`
 }
@@ -223,7 +228,12 @@ export function stackedBarOption(
           ...data.series
             .map((s, k) => ({ s, k }))
             .reverse()
-            .map(({ s, k }) => tooltipRow(theme.series[k], s.name, formatEuro(s.values[t]))),
+            .flatMap(({ s, k }) => [
+              tooltipRow(theme.series[k], s.name, formatEuro(s.values[t])),
+              ...(s.details ?? [])
+                .filter((d) => Math.abs(d.values[t]) >= 0.5)
+                .map((d) => tooltipDetailRow(`davon ${d.label(t)}`, formatEuro(d.values[t]))),
+            ]),
           tooltipRow(null, 'Summe', formatEuro(total)),
         ].join('')
       },

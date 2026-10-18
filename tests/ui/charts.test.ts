@@ -238,3 +238,52 @@ describe('Diagrammoptionen', () => {
     expect(table.rows[3][3]).toBe(formatEuro(data.median[3]))
   })
 })
+
+describe('Aufschlüsselung der Kapitalertragsteuer', () => {
+  it('zeigt im Tooltip die Anlässe mit Betrag, ohne Zeilen für 0 €', () => {
+    const data = {
+      ages: [60, 61],
+      series: [
+        {
+          name: 'Kapitalertragsteuer',
+          values: [5_000, 18_000],
+          details: [
+            { label: () => 'Verkauf zu Jahresbeginn (108 Tsd. €)', values: [5_000, 5_000] },
+            { label: () => 'Vorabpauschale und Zinsen', values: [0, 0] },
+            { label: (t: number) => `Umschichtung (${t} €)`, values: [0, 13_000] },
+          ],
+        },
+      ],
+    }
+    const option = stackedBarOption(data, theme, wide)
+    const formatter = (option.tooltip as { formatter: Formatter }).formatter
+    const year61 = formatter([{ dataIndex: 1 }])
+    expect(year61).toContain('davon Umschichtung (1 €)')
+    expect(year61).toContain(formatEuro(13_000))
+    expect(year61).not.toContain('Vorabpauschale')
+    expect(formatter([{ dataIndex: 0 }])).not.toContain('Umschichtung')
+  })
+
+  it('übernimmt die Aufschlüsselung des Median-Pfades in die Diagrammdaten', () => {
+    const { summary } = smallRun()
+    const m = summary.medianPath
+    const withDetail = {
+      ...summary,
+      medianPath: {
+        ...m,
+        capitalTaxDetail: {
+          onSalesReal: m.capitalTaxReal,
+          salesReal: m.capitalTaxReal.map(() => 100_000),
+          onIncomeReal: m.capitalTaxReal.map(() => 0),
+          onRebalanceReal: m.capitalTaxReal.map(() => 0),
+          rebalanceSalesReal: m.capitalTaxReal.map(() => 0),
+        },
+      },
+    }
+    const series = incomeData(withDetail, true).series.find((s) => s.name === 'Kapitalertragsteuer')
+    expect(series?.details?.[0].label(3)).toBe('Verkauf zu Jahresbeginn (100 Tsd. €)')
+    expect(
+      incomeData(summary, true).series.find((s) => s.name === 'Kapitalertragsteuer')?.details,
+    ).toBe(undefined)
+  })
+})

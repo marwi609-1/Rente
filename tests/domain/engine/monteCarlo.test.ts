@@ -356,3 +356,32 @@ describe('sterblichkeitsgewichtete Sicht', () => {
     expect(Array.from(a.deathAge)).toEqual(Array.from(b.deathAge))
   })
 })
+
+describe('Herkunft der Kapitalertragsteuer', () => {
+  it('teilt die Steuer je Jahr vollständig auf Verkauf, Erträge und Umschichtung auf', () => {
+    const rows = runDeterministic(enginePlan.defaults(), ctx)
+    for (const row of rows) {
+      expect(
+        row.capitalTaxOnSales + row.capitalTaxOnIncome + row.capitalTaxOnRebalance,
+      ).toBeCloseTo(row.capitalTax, 6)
+    }
+    expect(rows.some((r) => r.capitalTaxOnRebalance > 0)).toBe(true)
+  })
+
+  it('rechnet den Median-Pfad nach und trifft dessen gespeicherte Steuer', () => {
+    const plan = stochasticPlan('lognormal', (p) => {
+      p.tax.enabled = true
+    })
+    const summary = summarize(plan, simulateBlock(plan, 0, 300, ctx), ctx)
+    const detail = summary.medianPath.capitalTaxDetail
+    if (!detail) throw new Error('Aufschlüsselung fehlt')
+    summary.medianPath.capitalTaxReal.forEach((tax, t) => {
+      expect(
+        detail.onSalesReal[t] + detail.onIncomeReal[t] + detail.onRebalanceReal[t],
+      ).toBeCloseTo(tax, 6)
+    })
+    expect(summarize(plan, simulateBlock(plan, 0, 300, ctx)).medianPath.capitalTaxDetail).toBe(
+      undefined,
+    )
+  })
+})

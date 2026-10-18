@@ -396,7 +396,12 @@ Jahresende und der Preisindex `I_t`; je Pfad außerdem Alter des ersten Fehljahr
 - **Median-Pfad:** Pfade aufsteigend nach realem Endvermögen sortiert, bei Gleichstand nach dem
   mittleren realen Vermögen über alle Jahre, dann nach Pfadindex; gewählt wird Rang `⌊(N − 1)/2⌋`.
   Seine Reihen speisen das Diagramm „Einkommen und Ausgaben“; nominal = real · `I_t`.
-  Depotfinanzierter Konsum = `max(0, K̂_t − Netto-Rente_t)`.
+  Depotfinanzierter Konsum = `max(0, K̂_t − Netto-Rente_t − weitere Einkünfte netto_t)`. Für den
+  Tooltip wird der Median-Pfad nachgerechnet (gleicher Seed und Pfadindex) und die
+  Kapitalertragsteuer nach Anlass aufgeteilt: Verkäufe zu Jahresbeginn (mit Versicherungserträgen),
+  Vorabpauschale und Zinsen samt Steuerverkauf, Rebalancing bzw. Auffüllen der Töpfe. Weil die
+  Jahresabrechnung das ganze Jahr betrachtet, ist jeder Anteil die Mehrsteuer gegenüber dem
+  vorigen Schritt; die Summe ergibt die Kapitalertragsteuer des Jahres.
 - **Endvermögensverteilung:** Histogramm mit höchstens 30 gleich breiten Klassen „runder“ Breite
   (1, 2, 2,5 oder 5 · 10^k) vom Minimum bis zum 99. Perzentil; größere Werte bilden eine
   Überlaufklasse.

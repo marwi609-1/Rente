@@ -1,6 +1,10 @@
+import { createReturnGenerator, createReturnPath } from '../market/generators'
 import type { RetirementPlan } from '../model/types'
+import type { EngineContext } from './context'
 import { histogramOfSorted, type Histogram } from './histogram'
 import type { PathBlock, PathSeries } from './monteCarlo'
+import { createPathSimulator } from './path'
+import { simulationYears } from './timeline'
 import { percentileOfSorted, percentilesOf } from './percentile'
 
 export { percentileOfSorted }
@@ -69,6 +73,52 @@ export interface MedianPath {
   bondShare: number[]
   cashShare: number[]
   priceIndex: number[]
+  /** Herkunft der Kapitalertragsteuer; nur, wenn die Auswertung den Pfad nachrechnen konnte */
+  capitalTaxDetail?: CapitalTaxDetail
+}
+
+/** Kapitalertragsteuer des Median-Pfades nach Anlass, mit den Verkaufsbeträgen; real. */
+export interface CapitalTaxDetail {
+  onSalesReal: number[]
+  salesReal: number[]
+  onIncomeReal: number[]
+  onRebalanceReal: number[]
+  rebalanceSalesReal: number[]
+}
+
+/**
+ * Rechnet einen Pfad nach (gleicher Seed, gleicher Pfadindex, daher identische Werte) und liefert
+ * die Herkunft seiner Kapitalertragsteuer. Die Pfadblöcke speichern sie nicht, um Speicher zu sparen.
+ */
+export function capitalTaxDetail(
+  plan: RetirementPlan,
+  path: number,
+  ctx: EngineContext,
+): CapitalTaxDetail {
+  const years = simulationYears(plan.household)
+  const generator = createReturnGenerator({
+    market: plan.market,
+    simulation: plan.simulation,
+    years,
+    historical: ctx.historical,
+  })
+  const returns = createReturnPath(years)
+  generator.fill(path, returns)
+  const detail: CapitalTaxDetail = {
+    onSalesReal: [],
+    salesReal: [],
+    onIncomeReal: [],
+    onRebalanceReal: [],
+    rebalanceSalesReal: [],
+  }
+  createPathSimulator(plan, ctx)(returns, (row) => {
+    detail.onSalesReal.push(row.capitalTaxOnSales / row.inflationIndex)
+    detail.salesReal.push(row.grossSales / row.inflationIndex)
+    detail.onIncomeReal.push(row.capitalTaxOnIncome / row.inflationIndex)
+    detail.onRebalanceReal.push(row.capitalTaxOnRebalance / row.inflationIndex)
+    detail.rebalanceSalesReal.push(row.rebalanceSales / row.inflationIndexEnd)
+  })
+  return detail
 }
 
 export interface ShortfallStats {
@@ -185,11 +235,20 @@ export function medianPath(block: PathBlock): MedianPath {
   }
 }
 
+function withDetail(plan: RetirementPlan, path: MedianPath, ctx?: EngineContext): MedianPath {
+  return ctx ? { ...path, capitalTaxDetail: capitalTaxDetail(plan, path.path, ctx) } : path
+}
+
 /**
  * Verdichtet die Pfade eines Laufs zu Perzentilbändern und Kennzahlen für den festen Horizont und
- * für die sterblichkeitsgewichtete Sicht.
+ * für die sterblichkeitsgewichtete Sicht. Mit `ctx` wird der Median-Pfad für die Herkunft der
+ * Kapitalertragsteuer nachgerechnet.
  */
-export function summarize(plan: RetirementPlan, block: PathBlock): MonteCarloSummary {
+export function summarize(
+  plan: RetirementPlan,
+  block: PathBlock,
+  ctx?: EngineContext,
+): MonteCarloSummary {
   const { paths, years } = block
   if (paths === 0) throw new RangeError('Für die Auswertung wird mindestens ein Pfad benötigt.')
   const { currentAge, startYear } = plan.household
@@ -304,7 +363,7 @@ export function summarize(plan: RetirementPlan, block: PathBlock): MonteCarloSum
       real: histogramOfSorted(terminal.real),
       nominal: histogramOfSorted(terminal.nominal),
     },
-    medianPath: medianPath(block),
+    medianPath: withDetail(plan, medianPath(block), ctx),
     cagr: { nominal: medianOrNull(block.cagrNominal), real: medianOrNull(block.cagrReal) },
   }
 }

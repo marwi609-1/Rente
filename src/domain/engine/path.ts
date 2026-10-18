@@ -276,6 +276,8 @@ export function createPathSimulator(plan: RetirementPlan, ctx: EngineContext): P
       )
       const { sale: openingSale } = opening.state
       let charges = opening.state.charges
+      // Kapitalertragsteuer je Anlass: Verkäufe zu Jahresbeginn, Erträge zum Jahresende, Umschichtung
+      const capitalTaxOnSales = charges.capitalTax
       holdings = openingSale.holdings
       basis = openingSale.basis
       let capitalNet = openingSale.taxableGain
@@ -349,6 +351,7 @@ export function createPathSimulator(plan: RetirementPlan, ctx: EngineContext): P
         holdings = { ...sale.holdings, cash: Math.max(0, remaining) }
       }
       paid = charges.total
+      const capitalTaxBeforeRebalance = charges.capitalTax
 
       const indexEnd = index * (1 + returns.inflation[t])
 
@@ -473,6 +476,9 @@ export function createPathSimulator(plan: RetirementPlan, ctx: EngineContext): P
             charges.healthOnIncome,
         ),
         capitalTax: charges.capitalTax,
+        capitalTaxOnSales,
+        capitalTaxOnIncome: capitalTaxBeforeRebalance - capitalTaxOnSales,
+        capitalTaxOnRebalance: charges.capitalTax - capitalTaxBeforeRebalance,
         incomeTax: charges.incomeTax,
         healthInsurance: charges.health,
         lossCarryForward,
