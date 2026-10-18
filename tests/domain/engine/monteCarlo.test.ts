@@ -9,7 +9,8 @@ import {
   simulateBlock,
   type PathBlock,
 } from '@/domain/engine/monteCarlo'
-import { PERCENTILES, percentileOfSorted, summarize } from '@/domain/engine/summary'
+import { percentilesOf } from '@/domain/engine/percentile'
+import { BAND_SERIES, PERCENTILES, percentileOfSorted, summarize } from '@/domain/engine/summary'
 import { yearResultToReal } from '@/domain/engine/realNominal'
 import type { RetirementPlan } from '@/domain/model/types'
 import { enginePlan } from '../../helpers/plans'
@@ -144,12 +145,34 @@ describe('Auswertung', () => {
     expect(percentileOfSorted(Float64Array.of(4), 0.3)).toBe(4)
   })
 
+  it('findet durch Auswahl dieselben Perzentile wie durch Sortieren', () => {
+    let state = 1
+    const random = () => (state = (state * 16_807) % 2_147_483_647) / 2_147_483_647
+    // viele gleiche Werte wie bei erschöpften Depots, dazu sortierte und konstante Reihen
+    const sample = (n: number) =>
+      Float64Array.from({ length: n }, () =>
+        random() < 0.3 ? 0 : Math.round(random() * 50) * 1_000,
+      )
+    const samples = [
+      ...[1, 2, 15, 16, 17, 100, 1_000, 10_000].map(sample),
+      Float64Array.from({ length: 1_000 }, (_, i) => i),
+      Float64Array.from({ length: 1_000 }, (_, i) => -i),
+      new Float64Array(500),
+    ]
+    const ps = [0, 0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 1]
+    for (const values of samples) {
+      const sorted = Float64Array.from(values).sort()
+      expect(percentilesOf(values, ps)).toEqual(ps.map((p) => percentileOfSorted(sorted, p)))
+    }
+    expect(percentilesOf(new Float64Array(0), [0.5])).toEqual([NaN])
+  })
+
   it('liefert je Jahr monotone Perzentile für alle Reihen', () => {
     for (const type of ['lognormal', 'student-t', 'block-bootstrap'] as const) {
       const plan = stochasticPlan(type)
       const summary = summarize(plan, simulateBlock(plan, 0, 1_000, ctx))
       expect(summary.percentiles).toEqual(PERCENTILES)
-      for (const name of PATH_SERIES) {
+      for (const name of BAND_SERIES) {
         const band = summary.bands[name]
         for (let t = 0; t < summary.years; t++) {
           for (let k = 1; k < PERCENTILES.length; k++) {

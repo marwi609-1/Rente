@@ -1,12 +1,21 @@
 import type { RetirementPlan } from '../model/types'
 import { histogramOfSorted, type Histogram } from './histogram'
-import { PATH_SERIES, type PathBlock, type PathSeries } from './monteCarlo'
-import { percentileOfSorted } from './percentile'
+import type { PathBlock, PathSeries } from './monteCarlo'
+import { percentileOfSorted, percentilesOf } from './percentile'
 
 export { percentileOfSorted }
 
 /** Perzentile je Jahr (Spezifikation Abschnitt 11). */
 export const PERCENTILES = [5, 10, 25, 50, 75, 90, 95] as const
+
+/**
+ * Reihen mit Perzentilbändern: Depotwert (Fan Chart, Vermögen mit 90/95) und Anteile (Asset
+ * Allocation beim Bucket). Die übrigen Reihen speisen Median-Pfad und Kennzahlen; Bänder dafür
+ * würden nur Sortierzeit kosten.
+ */
+export const BAND_SERIES = ['total', 'totalReal', 'equityShare', 'bondShare', 'cashShare'] as const
+
+export type BandSeries = (typeof BAND_SERIES)[number]
 
 /** Alter für die Kennzahl „Vermögen mit …“. */
 export const WEALTH_AGES = [90, 95] as const
@@ -100,7 +109,7 @@ export interface MonteCarloSummary {
   calendarYears: number[]
   percentiles: readonly number[]
   /** `bands[reihe][k][t]`: Perzentil `percentiles[k]` im Jahr t */
-  bands: Record<PathSeries, number[][]>
+  bands: Record<BandSeries, number[][]>
   /** Anteil der Pfade ohne Fehljahr bis zum Horizont */
   successRate: number
   /** Standardfehler √(p(1−p)/N) */
@@ -184,14 +193,14 @@ export function summarize(plan: RetirementPlan, block: PathBlock): MonteCarloSum
   const ages = Array.from({ length: years }, (_, t) => currentAge + t)
 
   const column = new Float64Array(paths)
-  const bands = {} as Record<PathSeries, number[][]>
-  for (const name of PATH_SERIES) {
+  const fractions = PERCENTILES.map((q) => q / 100)
+  const bands = {} as Record<BandSeries, number[][]>
+  for (const name of BAND_SERIES) {
     const values = block.series[name]
     const band = PERCENTILES.map(() => new Array<number>(years))
     for (let t = 0; t < years; t++) {
       for (let p = 0; p < paths; p++) column[p] = values[p * years + t]
-      column.sort()
-      PERCENTILES.forEach((q, k) => (band[k][t] = percentileOfSorted(column, q / 100)))
+      percentilesOf(column, fractions).forEach((value, k) => (band[k][t] = value))
     }
     bands[name] = band
   }
