@@ -117,12 +117,15 @@ describe('Eingabeformulare', () => {
   })
 })
 
-describe('Hinweise im Formular', () => {
-  it('warnt, wenn der feste Netto-Konsum unter dem Mindestkonsum liegt', async () => {
-    const { wrapper } = await open('konsum')
-    expect(wrapper.find('[data-testid="below-minimum"]').exists()).toBe(false)
-    await type(wrapper, 'spending.netConsumption', '60.000')
-    expect(wrapper.find('[data-testid="below-minimum"]').exists()).toBe(true)
+describe('Mindestkonsum', () => {
+  it('lehnt bei festem realem Konsum einen Mindestkonsum über dem Netto-Konsum ab', async () => {
+    const { wrapper, store } = await open('konsum')
+    const messages = await type(wrapper, 'spending.netConsumption', '40.000')
+    expect(messages()).toBe('')
+    expect(
+      wrapper.get('[data-path="spending.minimumAcceptableConsumption"]').find('.v-messages').text(),
+    ).toContain('darf der Mindestkonsum nicht über dem Netto-Konsum liegen')
+    expect(store.validation.ok).toBe(false)
   })
 })
 

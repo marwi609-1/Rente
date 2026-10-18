@@ -31,7 +31,7 @@ describe('Szenario-Store', () => {
     expect(scenarios.saved.map((s) => s.name)).toEqual(['Mein Plan'])
     const id = scenarios.activeId!
 
-    planStore.plan.spending.netConsumption = 10_000
+    planStore.plan.spending.netConsumption = 90_000
     expect(await scenarios.saveCurrent(true)).toBeNull()
     expect(scenarios.saved).toHaveLength(2)
 
@@ -49,10 +49,10 @@ describe('Szenario-Store', () => {
   it('überschreibt beim Speichern das bearbeitete Szenario', async () => {
     const { planStore, scenarios } = setup()
     await scenarios.saveCurrent()
-    planStore.plan.spending.netConsumption = 55_000
+    planStore.plan.spending.netConsumption = 85_000
     await scenarios.saveCurrent()
     expect(scenarios.saved).toHaveLength(1)
-    expect(scenarios.saved[0].plan.spending.netConsumption).toBe(55_000)
+    expect(scenarios.saved[0].plan.spending.netConsumption).toBe(85_000)
   })
 
   it('dupliziert Vorlagen und löscht Szenarien', async () => {

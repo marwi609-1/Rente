@@ -81,7 +81,9 @@ größer als 1e−12 sein; perfekte Korrelationen (nur positiv semidefinit) werd
 **A18 – Weitere Plausibilitätsregeln.** Die Hochrechnung der Rente darf den bisherigen Anspruch nicht
 unterschreiten. Einmalausgaben müssen zwischen aktuellem Alter und Horizont liegen.
 `costBasisShare` darf über 1 liegen (nicht realisierter Verlust). Für `student-t` ist `studentDf > 2`
-Pflicht (endliche Varianz).
+Pflicht (endliche Varianz). Bei festem realem Konsum darf der Mindestkonsum den Netto-Konsum nicht
+übersteigen, sonst wäre jedes Ruhestandsjahr per Definition ein Fehljahr; bei den übrigen Regeln
+bleibt die Kombination erlaubt, weil der Konsum dort über dem Netto-Konsum liegen kann.
 
 ## Historische Daten und Marktmodelle
 
