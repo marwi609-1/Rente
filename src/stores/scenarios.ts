@@ -166,16 +166,20 @@ export const useScenariosStore = defineStore('scenarios', () => {
     return { fileName: `${safeName}.json`, content: exportPlan(plan) }
   }
 
-  /** Importiert eine Szenario-Datei als neues gespeichertes Szenario. */
+  /**
+   * Importiert eine Szenario-Datei als neues gespeichertes Szenario und lädt es in die Eingabe.
+   */
   async function importScenario(
     text: string,
   ): Promise<{ ok: true; name: string } | { ok: false; message: string; issues: PlanIssue[] }> {
     const result = importPlan(text)
     if (!result.ok) return result
-    await store({ id: newId(), name: result.plan.name, plan: result.plan, updatedAt: Date.now() })
-    return error.value === null
-      ? { ok: true, name: result.plan.name }
-      : { ok: false, message: error.value, issues: [] }
+    const id = newId()
+    await store({ id, name: result.plan.name, plan: result.plan, updatedAt: Date.now() })
+    if (error.value !== null) return { ok: false, message: error.value, issues: [] }
+    planStore.plan = structuredClone(result.plan)
+    activeId.value = id
+    return { ok: true, name: result.plan.name }
   }
 
   function toggleSelected(id: string): void {
