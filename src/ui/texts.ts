@@ -6,8 +6,10 @@ export const LEGAL_STATUS = 'Rechtsstand Deutschland 2026'
 /** Hinweis bei historischen Marktmodellen (Spezifikation Abschnitt 8). */
 export function historicalDataNotice(firstYear: number, lastYear: number): string {
   return (
-    `Historische US-Daten ${firstYear}–${lastYear} (Robert Shiller): Der US-Aktienmarkt war ` +
-    'im Rückblick einer der erfolgreichsten der Welt (Survivorship-Bias). Wechselkurseffekte für ' +
-    'Anleger in Euro sind nicht enthalten.'
+    `Historische Daten ${firstYear}–${lastYear} aus Sicht eines Anlegers in DM bzw. Euro: Aktien ` +
+    'bis 2000 DWS Akkumula (Anteilwert, Fondskosten bereits abgezogen), ab 2001 MSCI World Net ' +
+    'Return in Euro; Anleihen als rechnerische 10-jährige Bundesanleihe. Der Zeitraum ist kurz, ' +
+    'enthält nur wenige unabhängige 30-Jahres-Abschnitte und zeigt im Rückblick erfolgreiche ' +
+    'Märkte (Survivorship-Bias).'
   )
 }

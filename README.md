@@ -45,8 +45,10 @@ npm run dev
   - `engine/` Jahresschritt, Pfad, Monte Carlo, Kennzahlen, Umrechnung real/nominal, sichere
     Entnahme, FIRE-Status, Heatmap-Raster, Perfect Withdrawal Rate
 - `src/workers/` Web-Worker-Pool (Comlink) und Ablaufsteuerung mit Fortschritt und Abbruch
-- `src/data/` gesetzliche Rechengrößen 2026, historische US-Renditen 1871–2025 und
-  Destatis-Kohortensterbetafeln ([Quellen](docs/DATA_SOURCES.md)); die Datendateien erzeugen
+- `src/data/` gesetzliche Rechengrößen 2026, historische EUR-Renditen 1963–2025 (Aktien: DWS
+  Akkumula bis 2000, MSCI World Net EUR ab 2001; Bundesanleihe, Dreimonatsgeld, VPI),
+  US-Referenzdaten 1871–2025 nur für den Plausibilitätsanker und Destatis-Kohortensterbetafeln
+  ([Quellen](docs/DATA_SOURCES.md)); die Datendateien erzeugen `scripts/build_historical_eur.py`,
   `scripts/build_historical_us.py` und `scripts/build_mortality_de.py`
 - `src/stores/` Pinia-Stores: Plan mit Validierung, Ergebnisse mit automatischer Neuberechnung
   (500 ms nach der letzten Eingabe, abbrechbar) samt sicherer Entnahme und FIRE-Status, Analysen
@@ -73,8 +75,8 @@ npm run dev
 | M5          | UI, Dashboard, Charts                                              | umgesetzt  |
 | M6          | Szenarien, Heatmap, sichere Entnahme, PWR                          | umgesetzt² |
 
-¹ Der Plausibilitätsanker (historische Sequenzen ab 1926, 4 %, 50/50) ergibt mit den Shiller-Daten
-91,5 % statt der geforderten ≥ 95 %; die Abweichung folgt aus der vorgegebenen Anleihereihe und ist
+¹ Der Plausibilitätsanker (historische Sequenzen ab 1926, 4 %, 50/50) ergibt mit den
+US-Referenzdaten (Shiller) 91,5 % statt der geforderten ≥ 95 %; die Abweichung folgt aus der vorgegebenen Anleihereihe und ist
 akzeptiert, siehe [A26](docs/ASSUMPTIONS.md).
 
 ² Ohne Migration des Ursprungsformats (v1 → v2); sie entfällt auf Entscheidung des Nutzers, siehe

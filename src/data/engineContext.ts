@@ -1,12 +1,12 @@
 import type { EngineContext } from '@/domain/engine/context'
 
-import { historicalUs } from './historical'
+import { historicalEur } from './historical'
 import { mortalityDe } from './mortality'
 import { paramsDe2026 } from './params-de-2026'
 
 /** Rechtsstand 2026 mit den mitgelieferten historischen Renditen und Sterbetafeln. */
 export const defaultEngineContext: EngineContext = {
   params: paramsDe2026,
-  historical: historicalUs,
+  historical: historicalEur,
   mortality: mortalityDe,
 }

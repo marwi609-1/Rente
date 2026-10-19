@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
-import { defaultEngineContext as ctx } from '@/data/engineContext'
-import { historicalUs } from '@/data/historical'
+import { defaultEngineContext } from '@/data/engineContext'
 import { monteCarloPathCount, simulateBlock } from '@/domain/engine/monteCarlo'
 import { summarize } from '@/domain/engine/summary'
 import type { RetirementPlan } from '@/domain/model/types'
+import { historicalUs } from '../../helpers/historicalUs'
 import { enginePlan } from '../../helpers/plans'
+
+/** Der Anker der Spezifikation bezieht sich auf US-Daten (Shiller), nicht auf die EUR-Daten der App. */
+const ctx = { ...defaultEngineContext, historical: historicalUs }
 
 /**
  * Plausibilitätsanker (Spezifikation M2): historische Sequenzen ab 1926, alle vollständigen
@@ -72,5 +75,19 @@ describe('Plausibilitätsanker Bengen/Trinity', () => {
     const plan = anchorPlan(0.039)
     const summary = summarize(plan, simulateBlock(plan, 0, completeWindows, ctx))
     expect(summary.successRate).toBeGreaterThanOrEqual(0.95)
+  })
+})
+
+describe('Einordnung mit den EUR-Daten der App', () => {
+  it('4 %: 33 von 34 Fenstern ab 1963 erfolgreich, Ausfall nur Startjahr 1969', () => {
+    const plan = anchorPlan(0.04)
+    plan.market.bootstrap = { meanBlockLength: 5 }
+    const windows = 2025 - 29 - 1963 + 1
+    const block = simulateBlock(plan, 0, windows, defaultEngineContext)
+    expect(summarize(plan, block).successRate).toBeCloseTo(33 / 34, 12)
+    const failed = Array.from(block.failureYears)
+      .map((f, p) => (f > 0 ? 1963 + p : null))
+      .filter((y) => y !== null)
+    expect(failed).toEqual([1969])
   })
 })

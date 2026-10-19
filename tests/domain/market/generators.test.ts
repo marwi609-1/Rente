@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { historicalUs } from '@/data/historical'
+import { historicalEur } from '@/data/historical'
 import { createReturnGenerator, createReturnPath } from '@/domain/market/generators'
 import { historicalWindow, type HistoricalRow } from '@/domain/market/historical'
 import { lognormalParams } from '@/domain/market/returns'
@@ -24,7 +24,7 @@ function draw(m: MarketModel, paths: number, years: number, seed = 42) {
     market: m,
     simulation: { paths, seed, outputReal: true, successTargetRate: 0.9 },
     years,
-    historical: historicalUs,
+    historical: historicalEur,
   })
   const out = createReturnPath(years)
   const n = generator.paths * years
@@ -144,7 +144,7 @@ describe('historische Sequenzen', () => {
       mm.type = 'historical-sequence'
       mm.bootstrap = { meanBlockLength: 5, fromYear: 2000, toYear: 2009 }
     })
-    const rows = historicalWindow(m, historicalUs)
+    const rows = historicalWindow(m, historicalEur)
     const { generator, values } = draw(m, 1_000, 15)
     expect(generator.paths).toBe(10)
     // Pfad 7 beginnt 2007; Jahr 3 ist 2010 → zyklisch 2000
@@ -167,7 +167,7 @@ describe('Block-Bootstrap', () => {
     mm.type = 'block-bootstrap'
     mm.bootstrap = { meanBlockLength: 5 }
   })
-  const rows = historicalUs.rows
+  const rows = historicalEur.rows
   const { values } = draw(m, 4_000, 30)
   const key = (r: Pick<HistoricalRow, Series>) => `${r.equity}|${r.bonds}|${r.cash}|${r.inflation}`
 

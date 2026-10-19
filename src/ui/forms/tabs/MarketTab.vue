@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 
-import { historicalUsMeta } from '@/data/historical'
+import { historicalEurMeta } from '@/data/historical'
 import { geometricMean } from '@/domain/market/returns'
 import type { MarketModelType } from '@/domain/model/types'
 import { usePlanStore } from '@/stores/plan'
@@ -72,7 +72,7 @@ const ensureBootstrap = () => (market.value.bootstrap ??= { meanBlockLength: 5 }
         label="Renditemodell"
         path="market.type"
         :items="modelItems"
-        help="Deterministisch: jedes Jahr die geometrische Rendite. Lognormal/Student-t: korrelierte Zufallsrenditen. Historische Sequenzen und Block-Bootstrap: US-Daten (Shiller)."
+        help="Deterministisch: jedes Jahr die geometrische Rendite. Lognormal/Student-t: korrelierte Zufallsrenditen. Historische Sequenzen und Block-Bootstrap: Jahresrenditen aus Sicht eines Anlegers in DM bzw. Euro (Aktien: DWS Akkumula bis 2000, MSCI World ab 2001; 10-jährige Bundesanleihe; Dreimonatsgeld; deutscher VPI)."
       />
     </v-col>
     <v-col v-if="market.type === 'student-t'" cols="12" sm="6" md="4">
@@ -94,7 +94,7 @@ const ensureBootstrap = () => (market.value.bootstrap ??= { meanBlockLength: 5 }
     class="mb-4"
     data-testid="historical-notice"
   >
-    {{ historicalDataNotice(historicalUsMeta.firstYear, historicalUsMeta.lastYear) }} Mittelwerte
+    {{ historicalDataNotice(historicalEurMeta.firstYear, historicalEurMeta.lastYear) }} Mittelwerte
     und Volatilitäten unten wirken hier nur auf den Basiszins (Variante „Anleiherendite“) und die
     erwartete Inflation der Bucket-Strategie; die TER gilt immer.
   </v-alert>
@@ -117,7 +117,7 @@ const ensureBootstrap = () => (market.value.bootstrap ??= { meanBlockLength: 5 }
         unit="calendar-year"
         optional
         path="market.bootstrap.fromYear"
-        :help="`Erstes Jahr des Datenfensters; leer = ${historicalUsMeta.firstYear}.`"
+        :help="`Erstes Jahr des Datenfensters; leer = ${historicalEurMeta.firstYear}.`"
         @update:model-value="ensureBootstrap().fromYear = $event"
       />
     </v-col>
@@ -128,7 +128,7 @@ const ensureBootstrap = () => (market.value.bootstrap ??= { meanBlockLength: 5 }
         unit="calendar-year"
         optional
         path="market.bootstrap.toYear"
-        :help="`Letztes Jahr des Datenfensters; leer = ${historicalUsMeta.lastYear}.`"
+        :help="`Letztes Jahr des Datenfensters; leer = ${historicalEurMeta.lastYear}.`"
         @update:model-value="ensureBootstrap().toYear = $event"
       />
     </v-col>
