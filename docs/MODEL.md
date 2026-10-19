@@ -218,7 +218,17 @@ angesetzt, weil das Erwerbseinkommen nicht modelliert ist; KV/PV entfällt dort.
   dann 0,05; gerundet auf eine Nachkommastelle).
 - `u` stammt aus einem eigenen Strom: `SplitMix32(pathSeed(seed, p) XOR 0x6C8E9CF5)`.
 - Ein Pfad erlebt alle Jahre bis einschließlich des Sterbealters. Sterblichkeitsgewichtet
-  erfolgreich ist er, wenn das erste Fehljahr nach dem Sterbealter liegt oder keines auftritt.
+  erfolgreich ist er, wenn das erste Fehljahr nach dem Sterbealter liegt oder keines auftritt und
+  am Ende des Sterbejahres (höchstens des Horizontjahres) das Zielvermögen vorhanden ist.
+
+## Erfolgskriterium
+
+Ein Pfad ist erfolgreich, wenn er bis zum Horizont kein Fehljahr hat (finanzierter Netto-Konsum
+mindestens Mindestkonsum · Preisindex) und sein realer Depotwert am Ende des Horizontjahres
+mindestens das Zielvermögen `spending.targetWealth` (Euro von heute, Toleranz 1 Cent) erreicht.
+Ohne Ziel (0) entfällt die zweite Bedingung. Dieselbe Regel gilt für Erfolgsquote, sichere Entnahme,
+FIRE-Status und Heatmap. Fehlbetrag und Fehljahre beschreiben nur die Konsumlücken; Pfade, die nur
+das Zielvermögen verfehlen, werden getrennt gezählt.
 
 ## Zu- und Abflüsse
 
@@ -453,17 +463,21 @@ und die Abwandlungen Netto-Konsum und Aktienquote; Erfolgsquote auf 2.000 Pfaden
 ### Perfect Withdrawal Rate
 
 Je Pfad die konstante reale Entnahme `c` (feste reale Entnahme, Mindestkonsum 0, Ausgabenprofil
-und Einmalausgaben wie im Plan), mit der das Depot genau zum Horizont aufgebraucht ist. Gelöst wird
+und Einmalausgaben wie im Plan), mit der das Depot genau zum Horizont bis auf das Zielvermögen `Z`
+aufgebraucht ist. Gelöst wird
 
 ```
-g(c) = realer Depotwert am Ende des Horizontjahres − Σ_t max(0, c · f(a_t) − K̂_t / I_t) = 0
+g(c) = realer Depotwert am Ende des Horizontjahres − Z − Σ_t max(0, c · f(a_t) − K̂_t / I_t) = 0
 ```
 
 (Summe über die Ruhestandsjahre). `g` fällt in `c` und ist stetig bis auf die Rundungssprünge der
 Steuer. Verfahren: obere Schranke durch Verdoppeln ab `max(netConsumption, 1.000 €)`, dann
 Illinois-Verfahren (Regula falsi mit Halbierung des festsitzenden Endpunkts) bis `|g| < 0,50 €`
-oder Intervallbreite < 0,50 €. Ausgewiesen werden Perzentile und Histogramm, die Rate relativ zum
-heutigen Depotwert.
+oder Intervallbreite < 0,50 €; ist schon `g(0) ≤ 0`, ist die PWR 0. Ausgewiesen werden Perzentile
+und Histogramm, die Rate relativ zum heutigen Depotwert. Bei historischen Sequenzen zusätzlich die
+PWR je Startjahr (Pfad p beginnt mit dem p-ten Jahr des Datenfensters) im Vergleich zum geplanten
+Netto-Konsum; Startjahre, deren Folge über das Fensterende hinausreicht (`Startjahr + Jahre − 1 >
+letztes Jahr`), sind als zyklisch fortgesetzt markiert.
 
 ## Szenarien
 

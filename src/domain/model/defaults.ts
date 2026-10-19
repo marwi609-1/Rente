@@ -22,6 +22,7 @@ export function createDefaultPlan(startYear: number): RetirementPlan {
       // Ursprung: yearlyWithdrawal 100.000, hier als Netto-Konsum gelesen
       netConsumption: 100_000,
       minimumAcceptableConsumption: 70_000,
+      targetWealth: 0,
       rule: { type: 'fixed-real' },
       ageProfile: [],
       oneOffs: [],

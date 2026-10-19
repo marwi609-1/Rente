@@ -1,4 +1,5 @@
 import { createReturnGenerator, createReturnPath } from '../market/generators'
+import { historicalWindow } from '../market/historical'
 import type { RetirementPlan } from '../model/types'
 import { profileFactor } from '../withdrawal/profile'
 import type { EngineContext } from './context'
@@ -17,8 +18,10 @@ const MAX_DOUBLINGS = 40
 /**
  * Perfect Withdrawal Rate je Pfad (Spezifikation Abschnitt 11): die konstante reale Entnahme
  * (feste reale Entnahme, Netto-Konsum in heutiger Kaufkraft), mit der das Depot genau zum Horizont
- * aufgebraucht ist. Gelöst wird g(c) = reales Endvermögen − Summe der realen ungedeckten Konsumbeträge
- * = 0 mit dem Illinois-Verfahren; g fällt in c und ist stetig bis auf Rundungssprünge der Steuer.
+ * bis auf das Zielvermögen aufgebraucht ist. Gelöst wird g(c) = reales Endvermögen − Zielvermögen
+ * − Summe der realen ungedeckten Konsumbeträge = 0 mit dem Illinois-Verfahren; g fällt in c und ist
+ * stetig bis auf Rundungssprünge der Steuer. Reicht das Depot schon ohne Entnahme nicht für das
+ * Zielvermögen, ist die PWR 0.
  */
 export function perfectWithdrawalRates(
   plan: RetirementPlan,
@@ -39,6 +42,7 @@ export function perfectWithdrawalRates(
   const returns = createReturnPath(years)
   const { retirementAge } = plan.household
   const profile = plan.spending.ageProfile
+  const target = plan.spending.targetWealth
 
   const balance = (c: number): number => {
     const simulate = createPathSimulator(withFixedRealConsumption(plan, c), ctx)
@@ -51,7 +55,7 @@ export function perfectWithdrawalRates(
       }
       terminal = row.total / row.inflationIndexEnd
     })
-    return terminal - unfunded
+    return terminal - target - unfunded
   }
 
   const out = new Float64Array(end - start)
@@ -102,15 +106,50 @@ export interface PwrSummary {
   percentiles: { p: number; amount: number }[]
   /** Bezugsgröße der Raten: heutiger Depotwert */
   portfolioValue: number
+  /** Zielvermögen am Horizont, heutige Kaufkraft */
+  targetWealth: number
+  /** Netto-Konsum laut Plan als Vergleichsgröße, heutige Kaufkraft */
+  plannedConsumption: number
   histogram: Histogram
+  /** PWR je historischem Startjahr (nur `historical-sequence`), sonst `null` */
+  byStartYear: { year: number; amount: number }[] | null
+  /**
+   * Erstes Startjahr, dessen Folge über das Datenende hinausreicht und zyklisch mit dem ersten Jahr
+   * des Fensters fortgesetzt wird (A22); `null`, wenn keines
+   */
+  cyclicFromYear: number | null
 }
 
-export function summarizePwr(values: Float64Array, portfolioValue: number): PwrSummary {
+/**
+ * Startjahre der Pfade bei historischen Sequenzen: Pfad p beginnt mit dem p-ten Jahr des
+ * Datenfensters. Bei anderen Marktmodellen `null`.
+ */
+export function pwrStartYears(plan: RetirementPlan, ctx: EngineContext): number[] | null {
+  if (plan.market.type !== 'historical-sequence') return null
+  if (!ctx.historical) throw new RangeError('Für historische Marktmodelle fehlen die Daten.')
+  return historicalWindow(plan.market, ctx.historical).map((row) => row.year)
+}
+
+export function summarizePwr(
+  values: Float64Array,
+  plan: RetirementPlan,
+  startYears: readonly number[] | null = null,
+): PwrSummary {
+  if (startYears && startYears.length !== values.length) {
+    throw new RangeError('Die Zahl der Startjahre passt nicht zur Zahl der Pfade.')
+  }
   const sorted = Float64Array.from(values).sort()
+  // Pfad p reicht bis zum Jahr startYears[p] + Jahre − 1; danach zyklisch (A22)
+  const years = simulationYears(plan.household)
+  const cyclic = startYears?.find((year) => year + years - 1 > startYears.at(-1)!)
   return {
     paths: sorted.length,
     percentiles: PERCENTILES.map((p) => ({ p, amount: percentileOfSorted(sorted, p / 100) })),
-    portfolioValue,
+    portfolioValue: plan.portfolio.totalValue,
+    targetWealth: plan.spending.targetWealth,
+    plannedConsumption: plan.spending.netConsumption,
     histogram: histogramOfSorted(sorted),
+    byStartYear: startYears ? startYears.map((year, p) => ({ year, amount: values[p] })) : null,
+    cyclicFromYear: cyclic ?? null,
   }
 }

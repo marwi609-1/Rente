@@ -428,6 +428,23 @@ Ausgabenprofil und Einmalausgaben bleiben wie im Plan. „Genau aufgebraucht“ 
 minus ungedeckter Konsum ist null; so bleibt die Gleichung auch jenseits der Erschöpfung stetig.
 Berechnet wird auf Knopfdruck über alle Pfade des Laufs.
 
+**A90 – Zielvermögen (Idee aus der ERN SWR Toolbox).** Optionales Erfolgskriterium: realer
+Depotwert am Horizont mindestens `spending.targetWealth` (Euro von heute, Default 0 = kein Ziel;
+ältere Pläne ohne das Feld erhalten 0). Angegeben als Betrag statt, wie bei ERN, als Anteil des
+Startdepots, weil Reserve für Pflege oder Erbe meist als Betrag geplant wird. Sterblichkeitsgewichtet
+gilt das Ziel am Ende des Sterbejahres, weil dann vererbt wird. Immobilien und andere Vermögen
+außerhalb des Depots zählen nicht. Die Regeln selbst kennen das Ziel nicht: VPW verbraucht das Depot
+planmäßig bis zum Horizont und verfehlt ein Ziel daher regelmäßig (die Eingabe weist darauf hin);
+Guyton-Klinger und Floor & Ceiling steuern nicht auf das Ziel hin. Die PWR rechnet das Ziel ein.
+
+**A91 – PWR je Startjahr.** Nur bei historischen Sequenzen, deren Pfade eindeutig einem Startjahr
+zugeordnet sind (beim Block-Bootstrap nicht). „Startjahr“ ist das historische Jahr, das dem ersten
+Planjahr entspricht, nicht dem Ruhestandsbeginn; bei einer Sparphase verschiebt sich der
+Ruhestand um deren Länge. Ist der Planzeitraum länger als der Rest des Datenfensters, wird zyklisch
+mit dem ersten Datenjahr fortgesetzt (A22); diese Startjahre sind grau hinterlegt, weil die Folge
+dort einen künstlichen Sprung vom Datenende zum Datenanfang enthält. Der Vergleichswert ist der
+Netto-Konsum laut Plan ohne Ausgabenprofil.
+
 **A73 – Rechenaufwand.** Sichere Entnahme und FIRE-Status laufen nach jedem Hauptlauf automatisch im
 Hintergrund und werden mit der nächsten Eingabe abgebrochen; Heatmap und PWR nur auf Knopfdruck.
 Eine Eingabeänderung bricht sie ab, fertige Ergebnisse bleiben als veraltet markiert sichtbar.

@@ -53,10 +53,14 @@ function successCard(s: MonteCarloSummary, plan: RetirementPlan, view: KpiView):
     : { rate: s.successRate, se: s.successStdError }
   const target = plan.simulation.successTargetRate
   const reached = primary.rate >= target
+  const wealthTarget = s.targetWealth.amount
+  const missed = view.mortalityWeighted
+    ? s.targetWealth.mortalityMissedPaths
+    : s.targetWealth.missedPaths
   return {
     id: 'success',
     title: 'Erfolgsquote',
-    help: 'Anteil der Pfade ohne Fehljahr: Der finanzierte Netto-Konsum liegt in jedem Ruhestandsjahr mindestens beim Mindestkonsum. Sterblichkeitsgewichtet zählen nur Jahre bis zum gezogenen Sterbealter. Der Standardfehler √(p(1−p)/N) gibt die Unsicherheit durch die endliche Pfadzahl an.',
+    help: 'Anteil der Pfade ohne Fehljahr: Der finanzierte Netto-Konsum liegt in jedem Ruhestandsjahr mindestens beim Mindestkonsum. Ist ein Zielvermögen gesetzt, muss am Horizont zusätzlich mindestens dieses Vermögen (Euro von heute) übrig sein. Sterblichkeitsgewichtet zählen nur Jahre bis zum gezogenen Sterbealter, das Zielvermögen gilt dann am Ende des Sterbejahres. Der Standardfehler √(p(1−p)/N) gibt die Unsicherheit durch die endliche Pfadzahl an.',
     value: formatPercent(primary.rate, 1),
     caption: view.mortalityWeighted
       ? 'sterblichkeitsgewichtet'
@@ -72,6 +76,15 @@ function successCard(s: MonteCarloSummary, plan: RetirementPlan, view: KpiView):
             label: 'Sterblichkeitsgewichtet',
             value: formatPercent(s.mortalityWeighted.successRate, 1),
           },
+      ...(wealthTarget > 0
+        ? [
+            { label: 'Zielvermögen (Euro von heute)', value: formatEuro(wealthTarget) },
+            {
+              label: 'Zielvermögen verfehlt',
+              value: `${formatNumber(missed)} Pfade (${share(missed, s.paths)})`,
+            },
+          ]
+        : []),
       { label: 'Pfade', value: formatNumber(s.paths) },
     ],
     status: {

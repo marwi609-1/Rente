@@ -11,7 +11,7 @@ import {
 } from '@/domain/engine/heatmap'
 import { monteCarloPathCount, type PathBlock } from '@/domain/engine/monteCarlo'
 import { createPathSimulator } from '@/domain/engine/path'
-import { summarizePwr, type PwrSummary } from '@/domain/engine/pwr'
+import { pwrStartYears, summarizePwr, type PwrSummary } from '@/domain/engine/pwr'
 import {
   findFireAge,
   findSafeWithdrawal,
@@ -274,5 +274,5 @@ export async function runPerfectWithdrawal(
   )
   const all = new Float64Array(totalPaths)
   parts.forEach((part, i) => all.set(part, chunks[i][0]))
-  return summarizePwr(all, plan.portfolio.totalValue)
+  return summarizePwr(all, plan, pwrStartYears(plan, defaultEngineContext))
 }

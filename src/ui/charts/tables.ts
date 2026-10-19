@@ -1,7 +1,7 @@
 import { formatEuro, formatNumber, formatPercent } from '@/utils/format'
 import type { ChartTable } from './ChartCard.vue'
 import type { CategoryData, FanChartData, StackedAgeData } from './data'
-import type { HeatmapChartData, OverlayData } from './options'
+import type { HeatmapChartData, OverlayData, StartYearData } from './options'
 
 /** Tabellen zu den Diagrammen: dieselben Werte ohne Farbcodierung. */
 
@@ -58,6 +58,18 @@ export function overlayTable(data: OverlayData): ChartTable {
     rows: data.ages.map((age, t) => [
       String(age),
       ...data.series.map((s) => (s.values[t] === null ? '–' : formatEuro(s.values[t]!))),
+    ]),
+  }
+}
+
+export function startYearTable(data: StartYearData): ChartTable {
+  return {
+    columns: ['Startjahr', 'PWR p. a.', 'Anteil am Depot', 'Netto-Konsum laut Plan gedeckt'],
+    rows: data.labels.map((label, k) => [
+      label,
+      formatEuro(data.values[k]),
+      data.portfolioValue > 0 ? formatPercent(data.values[k] / data.portfolioValue, 1) : '–',
+      data.values[k] < data.reference ? 'nein' : 'ja',
     ]),
   }
 }
