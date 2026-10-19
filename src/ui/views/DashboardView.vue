@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 
-import { historicalUsMeta } from '@/data/historical'
+import { historicalEurMeta } from '@/data/historical'
 import { usePlanStore } from '@/stores/plan'
 import { useResultsStore } from '@/stores/results'
 import ChartCard from '@/ui/charts/ChartCard.vue'
@@ -55,7 +55,7 @@ const allocation = computed(() =>
 const historicalNotice = computed(() =>
   resultPlan.value?.market.type === 'historical-sequence' ||
   resultPlan.value?.market.type === 'block-bootstrap'
-    ? historicalDataNotice(historicalUsMeta.firstYear, historicalUsMeta.lastYear)
+    ? historicalDataNotice(historicalEurMeta.firstYear, historicalEurMeta.lastYear)
     : null,
 )
 </script>

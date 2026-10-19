@@ -1,0 +1,123 @@
+{
+  "meta": {
+    "description": "Jährliche nominale Renditen aus Sicht eines Anlegers in DM bzw. Euro: Aktien bis 2000 DWS Akkumula (Anteilwert nach Fondskosten), ab 2001 MSCI World Net Return EUR; rechnerische 10-jährige deutsche Staatsanleihe (Total Return) aus der Umlaufsrendite; Dreimonatsgeld (Frankfurt, ab 1999 Euribor); VPI-Inflation (bis 1991 früheres Bundesgebiet).",
+    "convention": "Jahr Y = Jahresende Y−1 bis Jahresende Y",
+    "generated": "2026-10-19",
+    "firstYear": 1963,
+    "lastYear": 2025,
+    "equitySplice": {
+      "msciFromYear": 2001
+    },
+    "splices": {
+      "bondYield10yMinusAllMaturities1973to2025": 0.151,
+      "euriborMinusFrankfurt3m1999to2012": 0.027
+    },
+    "sources": [
+      {
+        "name": "DWS (ESG) Akkumula LC, DE0008474024, Anteilwerte via fynup.at (Aktien bis 2000)",
+        "url": "https://www.fynup.at/f/de0008474024",
+        "sha256": "cd6a699f0973dfd9c489e65c9e7cf6ad3a73f3631afd2a1612abf106ec62611e"
+      },
+      {
+        "name": "MSCI World Index (990100), Net Return, EUR, Monatsendstände (Aktien ab 2001)",
+        "url": "https://app2.msci.com/products/service/index/indexmaster/getLevelDataForGraph?currency_symbol=EUR&index_variant=NETR&start_date=19970101&end_date=20251231&data_frequency=END_OF_MONTH&index_codes=990100",
+        "sha256": "a2f54daf9a62a70b026f5fecc395222f90ac240f066f753d5709c854ffabd9b4"
+      },
+      {
+        "name": "Deutsche Bundesbank, Umlaufsrendite öffentliche Hand (Anleihen bis 03/1973 und 03/1976–01/1977)",
+        "url": "https://api.statistiken.bundesbank.de/rest/data/BBSIS/M.I.UMR.RD.EUR.S13.B.A.A.R.A.A._Z._Z.A",
+        "sha256": "db9ee8d3b8f6aadc1aa54dd939cf1f51b5bfd01122a9978fad4183b70b3934b7"
+      },
+      {
+        "name": "Deutsche Bundesbank, Umlaufsrendite öffentliche Hand, Restlaufzeit 9–10 Jahre (Anleihen ab 04/1973, Lücke 03–12/1976)",
+        "url": "https://api.statistiken.bundesbank.de/rest/data/BBSIS/M.I.UMR.RD.EUR.S13.B.A.R0910.R.A.A._Z._Z.A",
+        "sha256": "6e5d6c009f4aa570b3b6915162d290b2c455bf27c5838610e95df4d1abad232f"
+      },
+      {
+        "name": "Deutsche Bundesbank, Dreimonatsgeld Frankfurter Banken, Monatsdurchschnitt (Cash bis 1998)",
+        "url": "https://api.statistiken.bundesbank.de/rest/data/BBIG1/M.D0.EUR.MMKT.GMFFM.M03.AVE.MA",
+        "sha256": "26febb84218ca8466d2a85a56dfc8b04ad4f10f154992ead345748a8b69d5f46"
+      },
+      {
+        "name": "Deutsche Bundesbank, Dreimonats-Euribor, Monatsdurchschnitt (Cash ab 1999)",
+        "url": "https://api.statistiken.bundesbank.de/rest/data/BBIG1/M.D0.EUR.MMKT.EURIBOR.M03.AVE.MA",
+        "sha256": "7f4cab0d4f31093a45984fdbce5f37a0ea6559c78b256002a90946428e9f9aa1"
+      },
+      {
+        "name": "Statistisches Bundesamt, Verbraucherpreisindex Deutschland via Bundesbank (Inflation ab 1992)",
+        "url": "https://api.statistiken.bundesbank.de/rest/data/BBDP1/M.DE.N.VPI.C.A00000.I20.A",
+        "sha256": "1bc035c6ec621af7c9b23ca7c9d1b6ee8c59ddb1da9bfa7da81f858e0b0d7348"
+      },
+      {
+        "name": "Statistisches Bundesamt, Verbraucherpreisindex lange Reihen ab 1948, früheres Bundesgebiet (Inflation bis 1991)",
+        "url": "https://www.destatis.de/DE/Themen/Wirtschaft/Preise/Verbraucherpreisindex/Publikationen/Downloads-Verbraucherpreise/verbraucherpreisindex-lange-reihen-pdf-5611103.html",
+        "sha256": "c33bb441cdb5a124c16b02e818c3b2ea04a31eaf1491465db12f4a57f6166a8a"
+      }
+    ]
+  },
+  "rows": [
+    {"year": 1963, "equity": 0.09580838, "bonds": 0.07000481, "cash": 0.04054098, "inflation": 0.03303303},
+    {"year": 1964, "equity": 0.0568306, "bonds": 0.03347452, "cash": 0.04166407, "inflation": 0.02325581},
+    {"year": 1965, "equity": -0.04239917, "bonds": -0.02081614, "cash": 0.05257201, "inflation": 0.03977273},
+    {"year": 1966, "equity": -0.11987041, "bonds": 0.0839157, "cash": 0.06831368, "inflation": 0.0273224},
+    {"year": 1967, "equity": 0.41840491, "bonds": 0.14078496, "cash": 0.04351728, "inflation": 0.00797872},
+    {"year": 1968, "equity": 0.15282584, "bonds": 0.1053171, "cash": 0.03875428, "inflation": 0.02110818},
+    {"year": 1969, "equity": -0.07203602, "bonds": -0.0232883, "cash": 0.05940626, "inflation": 0.02067183},
+    {"year": 1970, "equity": -0.20485175, "bonds": 0.0428814, "cash": 0.09822899, "inflation": 0.04050633},
+    {"year": 1971, "equity": -0.03694915, "bonds": 0.10455109, "cash": 0.0738712, "inflation": 0.05352798},
+    {"year": 1972, "equity": 0.01830341, "bonds": 0.03213995, "cash": 0.05756595, "inflation": 0.06466513},
+    {"year": 1973, "equity": -0.16868303, "bonds": 0.02887749, "cash": 0.12838693, "inflation": 0.07809111},
+    {"year": 1974, "equity": -0.13305613, "bonds": 0.09460187, "cash": 0.10364133, "inflation": 0.0583501},
+    {"year": 1975, "equity": 0.4028777, "bonds": 0.18338427, "cash": 0.05072917, "inflation": 0.05323194},
+    {"year": 1976, "equity": 0.09606838, "bonds": 0.14133503, "cash": 0.04331948, "inflation": 0.03790614},
+    {"year": 1977, "equity": 0.03119152, "bonds": 0.18729888, "cash": 0.04453364, "inflation": 0.03304348},
+    {"year": 1978, "equity": 0.01088929, "bonds": 0.01813713, "cash": 0.03763382, "inflation": 0.02525253},
+    {"year": 1979, "equity": -0.01705566, "bonds": -0.00809393, "cash": 0.06893826, "inflation": 0.05418719},
+    {"year": 1980, "equity": 0.1217656, "bonds": 0.02340478, "cash": 0.09964626, "inflation": 0.05607477},
+    {"year": 1981, "equity": 0.04694708, "bonds": 0.04386524, "cash": 0.12798978, "inflation": 0.06637168},
+    {"year": 1982, "equity": 0.20399171, "bonds": 0.21984678, "cash": 0.09248077, "inflation": 0.04564315},
+    {"year": 1983, "equity": 0.2247578, "bonds": 0.05517255, "cash": 0.05932032, "inflation": 0.02777778},
+    {"year": 1984, "equity": 0.12532958, "bonds": 0.17422926, "cash": 0.0615281, "inflation": 0.01930502},
+    {"year": 1985, "equity": 0.45766948, "bonds": 0.11861451, "cash": 0.05575801, "inflation": 0.01515152},
+    {"year": 1986, "equity": 0.0714745, "bonds": 0.10156177, "cash": 0.04696492, "inflation": -0.00995025},
+    {"year": 1987, "equity": -0.0450045, "bonds": 0.03317243, "cash": 0.04062016, "inflation": 0.01005025},
+    {"year": 1988, "equity": 0.36202744, "bonds": 0.06670183, "cash": 0.04368144, "inflation": 0.01865672},
+    {"year": 1989, "equity": 0.25557435, "bonds": 0.0128092, "cash": 0.0730075, "inflation": 0.03052503},
+    {"year": 1990, "equity": -0.11971831, "bonds": -0.01441188, "cash": 0.08766133, "inflation": 0.02725118},
+    {"year": 1991, "equity": 0.05335652, "bonds": 0.12379186, "cash": 0.09578976, "inflation": 0.04267589},
+    {"year": 1992, "equity": 0.01307621, "bonds": 0.14912287, "cash": 0.09882909, "inflation": 0.03464567},
+    {"year": 1993, "equity": 0.26988266, "bonds": 0.18769086, "cash": 0.07479525, "inflation": 0.04261796},
+    {"year": 1994, "equity": 0.01273101, "bonds": -0.04447125, "cash": 0.05444607, "inflation": 0.02335766},
+    {"year": 1995, "equity": 0.05474351, "bonds": 0.18261998, "cash": 0.04576546, "inflation": 0.01569187},
+    {"year": 1996, "equity": 0.18461941, "bonds": 0.08758523, "cash": 0.03316875, "inflation": 0.01544944},
+    {"year": 1997, "equity": 0.26535513, "bonds": 0.09848138, "cash": 0.03348635, "inflation": 0.02074689},
+    {"year": 1998, "equity": 0.13053499, "bonds": 0.16856992, "cash": 0.03579068, "inflation": 0.00271003},
+    {"year": 1999, "equity": 0.55049108, "bonds": -0.05654228, "cash": 0.03006439, "inflation": 0.01216216},
+    {"year": 2000, "equity": -0.00461804, "bonds": 0.07830792, "cash": 0.04481005, "inflation": 0.0200267},
+    {"year": 2001, "equity": -0.12298033, "bonds": 0.05747926, "cash": 0.04346652, "inflation": 0.01701571},
+    {"year": 2002, "equity": -0.32024555, "bonds": 0.09103833, "cash": 0.03369261, "inflation": 0.01029601},
+    {"year": 2003, "equity": 0.10740163, "bonds": 0.04091395, "cash": 0.02358425, "inflation": 0.01146497},
+    {"year": 2004, "equity": 0.06458084, "bonds": 0.10184473, "cash": 0.02127126, "inflation": 0.02267003},
+    {"year": 2005, "equity": 0.2616534, "bonds": 0.05101408, "cash": 0.02207861, "inflation": 0.0135468},
+    {"year": 2006, "equity": 0.07400656, "bonds": 0.00443821, "cash": 0.03122935, "inflation": 0.0145808},
+    {"year": 2007, "equity": -0.01658939, "bonds": 0.00188295, "cash": 0.04363171, "inflation": 0.03113772},
+    {"year": 2008, "equity": -0.37641697, "bonds": 0.13915076, "cash": 0.04733772, "inflation": 0.01045296},
+    {"year": 2009, "equity": 0.25938441, "bonds": 0.03301495, "cash": 0.01235996, "inflation": 0.0091954},
+    {"year": 2010, "equity": 0.19527717, "bonds": 0.05413001, "cash": 0.00815524, "inflation": 0.01366743},
+    {"year": 2011, "equity": -0.02382335, "bonds": 0.10030832, "cash": 0.01402251, "inflation": 0.01910112},
+    {"year": 2012, "equity": 0.14046918, "bonds": 0.09233299, "cash": 0.00575632, "inflation": 0.01984564},
+    {"year": 2013, "equity": 0.2120206, "bonds": -0.03882635, "cash": 0.00221057, "inflation": 0.01513514},
+    {"year": 2014, "equity": 0.19497289, "bonds": 0.14249458, "cash": 0.00211033, "inflation": 0.00106496},
+    {"year": 2015, "equity": 0.10421392, "bonds": 0.00508698, "cash": -0.00019166, "inflation": 0.00319149},
+    {"year": 2016, "equity": 0.10726389, "bonds": 0.03086691, "cash": -0.0026468, "inflation": 0.01378579},
+    {"year": 2017, "equity": 0.07513107, "bonds": 0.0034585, "cash": -0.00329501, "inflation": 0.01359833},
+    {"year": 2018, "equity": -0.0410773, "bonds": 0.01393337, "cash": -0.00322855, "inflation": 0.01651187},
+    {"year": 2019, "equity": 0.30018738, "bonds": 0.03870185, "cash": -0.00356916, "inflation": 0.01522843},
+    {"year": 2020, "equity": 0.06330389, "bonds": 0.03157641, "cash": -0.00424176, "inflation": -0.002},
+    {"year": 2021, "equity": 0.31067076, "bonds": -0.0257032, "cash": -0.00548616, "inflation": 0.0490982},
+    {"year": 2022, "equity": -0.12776397, "bonds": -0.20630714, "cash": 0.00341831, "inflation": 0.08118434},
+    {"year": 2023, "equity": 0.19596092, "bonds": 0.0225572, "cash": 0.03487501, "inflation": 0.03710247},
+    {"year": 2024, "equity": 0.26595679, "bonds": 0.02330347, "cash": 0.03630661, "inflation": 0.02640545},
+    {"year": 2025, "equity": 0.06767349, "bonds": -0.02931271, "cash": 0.02200956, "inflation": 0.01825726}
+  ]
+}

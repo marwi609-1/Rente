@@ -87,13 +87,17 @@ bleibt die Kombination erlaubt, weil der Konsum dort über dem Netto-Konsum lieg
 
 ## Historische Daten und Marktmodelle
 
-**A20 – Jahreskonvention der historischen Daten.** Jahr Y reicht von Januar Y bis Januar Y+1 auf
-Basis von Shillers Monatsdurchschnitten. Das glättet einzelne Jahre gegenüber Stichtagswerten.
-Details in `DATA_SOURCES.md`.
+**A20 – Jahreskonvention der historischen Daten.** EUR-Daten der App (A85): Jahr Y reicht vom
+Jahresende Y−1 bis zum Jahresende Y. Aktien nutzen Stichtagswerte (letzter Anteilwert bzw.
+Monatsendstand im Dezember), Anleihen und Geldmarkt Monatsdurchschnitte von Dezember Y−1 bis
+Dezember Y, die Inflation den Dezemberindex. US-Referenzdaten (nur Plausibilitätsanker A26): Jahr Y
+reicht von Januar Y bis Januar Y+1 auf Basis von Shillers Monatsdurchschnitten. Details in
+`DATA_SOURCES.md`.
 
-**A21 – Kurzfristiger Zins ab 2012.** Shillers Reihe R endet 2011. Fortgeschrieben wird nach
-Shillers eigener Konstruktion mit dem 6-Monats-T-Bill-Satz (FRED TB6MS). Dieser lag 1998–2011 im
-Mittel 0,47 Prozentpunkte unter R; die Cash-Rendite ab 2012 ist dadurch eher konservativ.
+**A21 – Kurzfristiger Zins der US-Referenzdaten ab 2012.** Shillers Reihe R endet 2011.
+Fortgeschrieben wird nach Shillers eigener Konstruktion mit dem 6-Monats-T-Bill-Satz (FRED TB6MS).
+Dieser lag 1998–2011 im Mittel 0,47 Prozentpunkte unter R; die Cash-Rendite ab 2012 ist dadurch
+eher konservativ.
 
 **A22 – Datenfenster.** `market.bootstrap.fromYear`/`toYear` begrenzen die Daten für beide
 historischen Modelle, nicht nur für den Bootstrap. Fehlende Folgejahre setzt `historical-sequence`
@@ -110,8 +114,9 @@ gerechnet, die Erfolgsquote ist 0 oder 1.
 angewendet und gilt damit exakt für `ln(1 + r)`. Für einfache Renditen weicht sie bei den
 Default-Parametern um höchstens 0,0005 ab.
 
-**A26 – Plausibilitätsanker: 91,5 % statt ≥ 95 % (akzeptiert).** Die Spezifikation erwartet für historische Sequenzen
-ab 1926 (50/50, 4 % real, 30 Jahre, ohne Steuern und Kosten) eine Erfolgsquote ≥ 95 %. Mit den
+**A26 – Plausibilitätsanker: 91,5 % statt ≥ 95 % (akzeptiert).** Der Anker rechnet mit den
+US-Referenzdaten (Shiller), nicht mit den EUR-Daten der App (A85). Die Spezifikation erwartet für
+historische Sequenzen ab 1926 (50/50, 4 % real, 30 Jahre, ohne Steuern und Kosten) eine Erfolgsquote ≥ 95 %. Mit den
 Shiller-Daten ergeben sich 65 von 71 Fenstern (91,5 %); es scheitern die Startjahre 1964–1969,
 jeweils erst ab dem 26. Entnahmejahr. Geprüft wurde:
 
@@ -128,6 +133,50 @@ Inflationsphase der 1970er schwächer abschnitten. Die Abweichung folgt aus dies
 aus dem Modell. Auf Entscheidung des Nutzers wird das Ergebnis als Anker akzeptiert; Daten und
 Modell bleiben unverändert. Der Test prüft das reproduzierbare Ergebnis (65 von 71 Fenstern,
 Ausfälle nur 1964–1969 ab dem 26. Jahr, mit 3,9 % mindestens 95 %).
+
+**A85 – EUR-Daten statt US-Daten (Nutzerentscheidung 19.10.2026).** Die historischen Modelle
+rechnen mit Jahresrenditen aus Sicht eines Anlegers in DM bzw. Euro (`src/data/historical-eur.json`,
+1963–2025). Die US-Reihe (Shiller, 1871–2025) bleibt nur als Referenz für den Plausibilitätsanker
+der Spezifikation (A26) im Repository und gehört nicht zum Build. Der Zeitraum beginnt 1963, weil der
+monatliche VPI aller privaten Haushalte (früheres Bundesgebiet) ab Januar 1962 vorliegt; der
+Akkumula-Anteilwert reicht bis Juli 1961 zurück. 63 Jahre ergeben 34 vollständige
+30-Jahres-Fenster, die sich stark überlappen (A23). Gespeicherte Pläne mit einem Datenfenster vor
+1963 rechnen nicht mehr; die Fehlermeldung nennt den verfügbaren Zeitraum. Einordnung: Mit 4 %
+realer Anfangsentnahme, 50/50 und ohne Steuern und Kosten scheitert nur das Startjahr 1969
+(33 von 34 Fenstern); mit 4,5 % sind es 28 von 34.
+
+**A86 – Aktien bis 2000: DWS Akkumula (Nutzerentscheidung).** MSCI World Net Return in Euro liegt
+über die öffentliche MSCI-Schnittstelle erst ab Ende Dezember 2000 vor. Davor wird der Anteilwert
+des DWS Akkumula (DE0008474024, heute DWS ESG Akkumula LC) verwendet: ein aktiv verwalteter,
+thesaurierender globaler Aktienfonds, dessen Länder- und Branchengewichte vom MSCI World abweichen.
+Die Anteilwerte sind nach den laufenden Fondskosten und ohne Ausgabeaufschlag; die TER der App wird
+zusätzlich abgezogen. Bis 2000 werden Kosten damit doppelt angesetzt (konservativ). Net Return heißt
+bei MSCI: Dividenden nach Abzug der Quellensteuer für nicht ansässige institutionelle Anleger
+wiederangelegt.
+
+**A87 – Anleihen: rechnerische 10-jährige Bundesanleihe.** Eine Performancereihe (REXP) ist bei der
+Bundesbank nicht mehr abrufbar. Abgeleitet wird die Rendite einer Anleihe mit konstanter Laufzeit
+von 10 Jahren aus den Monatsdurchschnitten der Umlaufsrendite öffentlicher Anleihen: Kauf zu pari
+mit Kupon `y₀`, Bewertung einen Monat später mit Restlaufzeit 10 − 1/12 Jahren zur Rendite `y₁`,
+`R = y₀/12 + y₀/y₁ · (1 − (1+y₁)^−T) + (1+y₁)^−T − 1`; zwölf Monatsrenditen ergeben das Jahr. Die
+Kursformel behandelt die Restlaufzeit stetig und vernachlässigt Stückzinsen und Kupontermine.
+Verwendet wird die Reihe mit Restlaufzeit 9–10 Jahren (ab April 1973), sonst die Umlaufsrendite
+aller Laufzeiten (bis März 1973 und in der Lücke März–Dezember 1976); beide Monate eines Schritts
+stammen immer aus derselben Reihe, damit der Reihenwechsel keinen Kurssprung erzeugt. Die 9–10-
+jährige Rendite lag 1973–2025 im Mittel 0,15 Prozentpunkte über der aller Laufzeiten. Bis November
+2022 sind die Renditen auf eine Nachkommastelle gerundet; das Rauschen in den Monatsrenditen hebt
+sich über das Jahr weitgehend auf. Keine Kosten, kein investierbarer Fonds; die Duration (rund 8)
+liegt über der breiter Euro-Staatsanleihen-Indizes.
+
+**A88 – Cash: Dreimonatsgeld.** Monatsdurchschnitte des Dreimonatsgelds unter Frankfurter Banken
+(bis 1998) bzw. des Dreimonats-Euribor (ab 1999), monatlich aufgezinst: `∏(1 + r_m/1200) − 1`.
+Euribor lag 1999–05/2012 im Mittel 0,03 Prozentpunkte über dem Frankfurter Satz. Interbankensätze
+liegen über dem, was Sparer auf Tagesgeld erhielten; die Cash-Rendite ist dadurch eher optimistisch.
+
+**A89 – Inflation: Verbraucherpreise Dezember zu Dezember.** Bis 1991 Preisindex für die
+Lebenshaltung aller privaten Haushalte, früheres Bundesgebiet (1995 = 100), ab 1992
+Verbraucherpreisindex Deutschland (2020 = 100). Die Indexwerte sind auf eine Nachkommastelle
+gerundet.
 
 **A27 – Student-t.** Der Median von `1 + r` entspricht dem lognormalen Modell. Das arithmetische
 Mittel der einfachen Renditen liegt dagegen über `μ` und ist theoretisch unbeschränkt, weil

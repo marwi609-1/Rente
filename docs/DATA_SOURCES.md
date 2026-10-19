@@ -1,10 +1,82 @@
 # Datenquellen
 
-## Historische US-Renditen – `src/data/historical-us.json`
+## Historische EUR-Renditen – `src/data/historical-eur.json`
+
+Jährliche nominale einfache Renditen 1963–2025 aus Sicht eines Anlegers in DM bzw. Euro: globale
+Aktien, eine rechnerische 10-jährige Bundesanleihe (Total Return), Dreimonatsgeld und die
+VPI-Inflation. Verwendet von den Marktmodellen `historical-sequence` und `block-bootstrap`
+(Nutzerentscheidung 19.10.2026, A85).
+
+| Reihe               | Quelle                                                                                                    | Serie / Datei                                                                                                                                                                  | Stand                | Abruf      |
+| ------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------- | ---------- |
+| Aktien 1963–2000    | DWS Investment GmbH, Anteilwerte DWS (ESG) Akkumula LC (DE0008474024), Chartdaten der Fondsseite fynup.at | Kurspunkte 03.07.1961–16.10.2026, bis 2000 monatlich                                                                                                                           | 16.10.2026           | 19.10.2026 |
+| Aktien ab 2001      | MSCI Inc., MSCI World Index (Code 990100), Variante Net Return (NETR), Währung EUR                        | Monatsendstände 29.12.2000–31.12.2025 über die Grafikschnittstelle von msci.com                                                                                                | 31.12.2025           | 19.10.2026 |
+| Anleihen            | Deutsche Bundesbank, Umlaufsrenditen inländischer Inhaberschuldverschreibungen, öffentliche Hand          | BBSIS.M.I.UMR.RD.EUR.S13.B.A.R0910.R.A.A._Z._Z.A (Restlaufzeit 9–10 Jahre, ab 04/1973) und BBSIS.M.I.UMR.RD.EUR.S13.B.A.A.R.A.A._Z._Z.A (alle Laufzeiten), Monatsdurchschnitte | 09/2026              | 19.10.2026 |
+| Cash bis 1998       | Deutsche Bundesbank, Geldmarktsätze am Frankfurter Bankplatz, Dreimonatsgeld (SU0107)                     | BBIG1.M.D0.EUR.MMKT.GMFFM.M03.AVE.MA, Monatsdurchschnitte                                                                                                                      | Erhebung bis 05/2012 | 19.10.2026 |
+| Cash ab 1999        | Deutsche Bundesbank, Dreimonats-Euribor (SU0316)                                                          | BBIG1.M.D0.EUR.MMKT.EURIBOR.M03.AVE.MA, Monatsdurchschnitte                                                                                                                    | 09/2026              | 19.10.2026 |
+| Inflation 1963–1991 | Statistisches Bundesamt, Verbraucherpreisindex lange Reihen ab 1948 (Excel), Blatt „Monate“               | Preisindex für die Lebenshaltung aller privaten Haushalte, früheres Bundesgebiet, 1995 = 100                                                                                   | Reihe eingestellt    | 19.10.2026 |
+| Inflation ab 1992   | Statistisches Bundesamt, Verbraucherpreisindex Deutschland, über die Bundesbank                           | BBDP1.M.DE.N.VPI.C.A00000.I20.A (2020 = 100), monatlich                                                                                                                        | 09/2026              | 19.10.2026 |
+
+URLs:
+
+- Akkumula: <https://www.fynup.at/f/de0008474024> (die Kurspunkte stehen als JSON im Seitenquelltext)
+- MSCI: <https://app2.msci.com/products/service/index/indexmaster/getLevelDataForGraph?currency_symbol=EUR&index_variant=NETR&start_date=19970101&end_date=20251231&data_frequency=END_OF_MONTH&index_codes=990100>
+  (frühere Startdaten liefert die Schnittstelle nicht; die Reihe beginnt am 29.12.2000)
+- Bundesbank: `https://api.statistiken.bundesbank.de/rest/data/<Datenbank>/<Schlüssel ohne Datenbank>?format=csv&lang=en`,
+  z. B. <https://api.statistiken.bundesbank.de/rest/data/BBIG1/M.D0.EUR.MMKT.EURIBOR.M03.AVE.MA?format=csv&lang=en>
+- Destatis: <https://www.destatis.de/DE/Themen/Wirtschaft/Preise/Verbraucherpreisindex/Publikationen/Downloads-Verbraucherpreise/verbraucherpreisindex-lange-reihen-pdf-5611103.html>
+  (Download „Excel“)
+
+SHA-256 der verwendeten Quelldateien stehen im Feld `meta.sources` der JSON-Datei.
+
+### Nutzungsbedingungen
+
+- **MSCI:** Indexdaten sind Eigentum von MSCI Inc. und ohne Lizenz nicht zur Weiterverbreitung
+  freigegeben. Die Jahresrenditen sind hier für den privaten Gebrauch abgeleitet; vor einer
+  Veröffentlichung außerhalb dieses Projekts ist die Nutzung mit MSCI zu klären.
+- **DWS/fynup:** Anteilwerte sind öffentlich, die Aufbereitung durch fynup.at ist urheberrechtlich
+  geschützt; es gilt dasselbe wie für MSCI.
+- **Bundesbank:** Nutzung mit Quellenangabe frei („Quelle: Deutsche Bundesbank“).
+- **Destatis:** Datenlizenz Deutschland – Namensnennung – Version 2.0
+  (<https://www.govdata.de/dl-de/by-2-0>), Quellenvermerk „© Statistisches Bundesamt (Destatis)“.
+
+### Aufbereitung
+
+Das Skript `scripts/build_historical_eur.py` erzeugt die Datei reproduzierbar aus den acht Quellen
+(benötigt Python 3 mit `openpyxl`); die erwarteten Dateinamen stehen im Kopf des Skripts:
+
+```bash
+python -I scripts/build_historical_eur.py QUELLVERZEICHNIS src/data/historical-eur.json
+```
+
+- **Jahreskonvention:** Jahr Y reicht vom Jahresende Y−1 bis zum Jahresende Y (A20).
+- **Aktien:** bis 2000 Verhältnis der letzten Akkumula-Anteilwerte zweier Jahre (das Skript prüft,
+  dass der letzte Wert nach dem 20. Dezember liegt), ab 2001 Verhältnis der Dezember-Monatsendstände
+  des MSCI World Net EUR. Gegenprobe gegen veröffentlichte Werte: Akkumula 1999 +55,05 %,
+  2002 −27,5 %, 2008 −31,94 %; MSCI World Net EUR 2008 −37,64 %, 2022 −12,78 %.
+- **Anleihen:** rechnerische 10-jährige Anleihe mit konstanter Laufzeit aus den monatlichen
+  Umlaufsrenditen, Formel und Reihenwahl in A87.
+- **Cash:** zwölf Monatsdurchschnitte des Dreimonatsgelds, monatlich aufgezinst (A88).
+- **Inflation:** Dezemberindex Y / Dezemberindex Y−1 − 1, bis 1991 früheres Bundesgebiet (A89).
+- **Verkettungsabstände** (Feld `meta.splices`): 9–10-jährige minus Umlaufsrendite aller Laufzeiten
+  1973–2025 im Mittel +0,15 Prozentpunkte; Euribor minus Frankfurter Dreimonatsgeld 1999–05/2012
+  +0,03 Prozentpunkte.
+
+### Einschränkungen
+
+- Akkumula ist ein aktiv verwalteter Fonds und kein Index; seine Renditen enthalten Fondskosten,
+  die die App über die TER ein zweites Mal abzieht (A86).
+- Die Anleihereihe ist eine rechnerische 10-jährige Bundesanleihe, kein investierbarer Fonds.
+- 63 Jahre ergeben nur 34 sich überlappende 30-Jahres-Fenster; extreme Phasen wie die deutsche
+  Inflation vor 1948 sind nicht enthalten. Rückblickend erfolgreiche Märkte (Survivorship-Bias).
+- Cash beruht auf Interbankensätzen und liegt über typischen Tagesgeldzinsen (A88).
+
+## Historische US-Renditen (Referenz) – `src/data/historical-us.json`
 
 Jährliche nominale einfache Renditen 1871–2025 für US-Aktien (Total Return), 10-jährige
-US-Staatsanleihen (Total Return), einen kurzfristigen Zins und die CPI-Inflation. Verwendet von den
-Marktmodellen `historical-sequence` und `block-bootstrap`.
+US-Staatsanleihen (Total Return), einen kurzfristigen Zins und die CPI-Inflation. Die App rechnet
+seit Version 1.07 mit den EUR-Daten; die US-Reihe dient nur noch dem Plausibilitätsanker der
+Spezifikation (A26) und wird nur von Tests geladen.
 
 | Reihe                       | Quelle                                                                              | Datei / Serie                                                                             | Stand                                           | Abruf      |
 | --------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------- | ---------- |
@@ -61,7 +133,7 @@ python -I scripts/build_historical_us.py ie_data.xls chapt26.xlsx TB6MS.csv src/
 ### Einschränkungen
 
 - US-Historie: Der US-Aktienmarkt war im Rückblick einer der erfolgreichsten der Welt
-  (Survivorship-Bias). Die App weist bei historischen Modellen darauf hin.
+  (Survivorship-Bias).
 - Keine Wechselkurseffekte für Anleger in Euro.
 - Monatsdurchschnitte glätten Jahresrenditen gegenüber Stichtagswerten (z. B. 2008: −35,6 %
   statt rund −37 % von Jahresende zu Jahresende).

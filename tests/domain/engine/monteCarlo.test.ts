@@ -110,9 +110,9 @@ describe('Monte-Carlo-Pfade', () => {
     expect(monteCarloPathCount(stochasticPlan('lognormal'), ctx)).toBe(1_000)
     expect(monteCarloPathCount(stochasticPlan('deterministic'), ctx)).toBe(1)
     const window = stochasticPlan('historical-sequence', (p) => {
-      p.market.bootstrap = { meanBlockLength: 5, fromYear: 1926, toYear: 2025 }
+      p.market.bootstrap = { meanBlockLength: 5, fromYear: 1966, toYear: 2025 }
     })
-    expect(monteCarloPathCount(window, ctx)).toBe(100)
+    expect(monteCarloPathCount(window, ctx)).toBe(60)
   })
 
   it('reproduziert im deterministischen Modell den Referenzpfad', () => {
