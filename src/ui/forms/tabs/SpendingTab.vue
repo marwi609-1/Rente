@@ -51,7 +51,27 @@ const ruleExplanation = computed(() =>
         help="Untergrenze, ab der ein Ruhestandsjahr als gescheitert zählt (Fehljahr): Liegt der tatsächlich finanzierte Netto-Konsum aus Rente und Depot darunter, ist das Jahr ein Fehljahr; ein Pfad ist erfolgreich, wenn er bis zum Horizont keines hat. Gemeinsames Erfolgskriterium aller Regeln – flexible Regeln kürzen den Konsum in schlechten Jahren, statt das Depot aufzubrauchen, und gelten erst unterhalb dieser Grenze als gescheitert. Typisch liegt er unter dem Netto-Konsum (z. B. 70–85 % davon); bei festem realem Konsum darf er ihn nicht übersteigen. Heutige Kaufkraft, ohne Ausgabenprofil."
       />
     </v-col>
+    <v-col cols="12" sm="6" md="4">
+      <NumberField
+        v-model="spending.targetWealth"
+        label="Zielvermögen"
+        unit="eur"
+        path="spending.targetWealth"
+        help="Vermögen in heutiger Kaufkraft, das am Planungshorizont mindestens übrig sein soll, etwa als Reserve für Pflege, Langlebigkeit oder Erbe. Ein Pfad ist nur erfolgreich, wenn er ohne Fehljahr bleibt und dieses Vermögen erreicht; sterblichkeitsgewichtet gilt es am Ende des Sterbejahres. Wirkt auf Erfolgsquote, sichere Entnahme, FIRE-Status, Heatmap und Perfect Withdrawal Rate. 0 = kein Ziel."
+      />
+    </v-col>
   </v-row>
+  <v-alert
+    v-if="spending.targetWealth > 0 && spending.rule.type === 'vpw'"
+    type="warning"
+    variant="tonal"
+    density="compact"
+    class="mb-4"
+    data-testid="vpw-target-warning"
+  >
+    VPW verbraucht das Depot planmäßig bis zum Horizont; ein Zielvermögen wird damit in der Regel
+    verfehlt.
+  </v-alert>
 
   <h3 class="text-subtitle-1 mb-2">Entnahmeregel</h3>
   <v-row dense>

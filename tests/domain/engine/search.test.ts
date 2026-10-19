@@ -100,7 +100,8 @@ describe('Sichere Entnahme', () => {
       values.push(result.netConsumption)
     }
     for (let i = 1; i < values.length; i++) expect(values[i]).toBeLessThan(values[i - 1])
-  })
+    // fünf vollständige Suchen: einzeln rund 5 s, im parallelen Gesamtlauf länger
+  }, 30_000)
 
   it('gilt nur für Regeln, deren Konsumhöhe der Netto-Konsum bestimmt', async () => {
     const plan = stochastic((p) => (p.spending.rule = { type: 'percent-of-portfolio', rate: 0.04 }))
@@ -226,7 +227,7 @@ describe('Perfect Withdrawal Rate', () => {
     const plan = stochastic((p) => (p.simulation.paths = 1_000))
     const values = perfectWithdrawalRates(plan, 0, 200, ctx)
     expect(values.every((v) => v > 0)).toBe(true)
-    const summary = summarizePwr(values, plan.portfolio.totalValue)
+    const summary = summarizePwr(values, plan)
     expect(summary.paths).toBe(200)
     expect(summary.histogram.counts.reduce((a, b) => a + b, 0) + summary.histogram.overflow).toBe(
       200,

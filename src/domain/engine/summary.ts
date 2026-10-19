@@ -4,6 +4,7 @@ import type { EngineContext } from './context'
 import { histogramOfSorted, type Histogram } from './histogram'
 import type { PathBlock, PathSeries } from './monteCarlo'
 import { createPathSimulator } from './path'
+import { meetsTargetWealth } from './target'
 import { simulationYears } from './timeline'
 import { percentileOfSorted, percentilesOf } from './percentile'
 
@@ -162,7 +163,7 @@ export interface MonteCarloSummary {
   percentiles: readonly number[]
   /** `bands[reihe][k][t]`: Perzentil `percentiles[k]` im Jahr t */
   bands: Record<BandSeries, number[][]>
-  /** Anteil der Pfade ohne Fehljahr bis zum Horizont */
+  /** Anteil der Pfade ohne Fehljahr bis zum Horizont, die dort das Zielvermögen erreichen */
   successRate: number
   /** Standardfehler √(p(1−p)/N) */
   successStdError: number
@@ -173,10 +174,17 @@ export interface MonteCarloSummary {
   /** Anzahl der Pfade je Erschöpfungsalter */
   depletionHistogram: { age: number; count: number }[]
   neverDepleted: number
+  /** Fehljahre (Konsum unter dem Mindestkonsum); ein verfehltes Zielvermögen zählt hier nicht */
   shortfall: ShortfallStats
   /**
+   * Zielvermögen (heutige Kaufkraft) und Zahl der Pfade, die es verfehlen: am Horizont bzw. am Ende
+   * des Sterbejahres, unabhängig von Fehljahren
+   */
+  targetWealth: { amount: number; missedPaths: number; mortalityMissedPaths: number }
+  /**
    * Sterblichkeitsgewichtete Sicht: Ein Pfad ist erfolgreich, wenn bis zum gezogenen Sterbealter
-   * (höchstens bis zum Horizont) kein Fehljahr auftritt; Fehlbeträge nur bis dahin.
+   * (höchstens bis zum Horizont) kein Fehljahr auftritt und am Ende dieses Jahres das Zielvermögen
+   * vorhanden ist; Fehlbeträge nur bis dahin.
    */
   mortalityWeighted: {
     successRate: number
@@ -275,24 +283,34 @@ export function summarize(
   const survivedShortfalls: number[] = []
   let survivedFailureYearSum = 0
   const deathAges: number[] = []
+  const target = plan.spending.targetWealth
+  let missedTarget = 0
+  let mortalityMissedTarget = 0
   for (let p = 0; p < paths; p++) {
+    const reachesTarget = meetsTargetWealth(block.series.totalReal[p * years + years - 1], target)
+    if (!reachesTarget) missedTarget++
     if (block.failureYears[p] === 0) {
-      succeeded++
+      if (reachesTarget) succeeded++
     } else {
       failedShortfalls.push(block.cumulativeShortfallReal[p])
       failureYearSum += block.failureYears[p]
     }
     const deathAge = block.deathAge[p]
     if (deathAge <= horizonAge) deathAges.push(deathAge)
+    const lastAliveYear = Math.min(years - 1, deathAge - currentAge)
+    const reachesTargetAtDeath = meetsTargetWealth(
+      block.series.totalReal[p * years + lastAliveYear],
+      target,
+    )
+    if (!reachesTargetAtDeath) mortalityMissedTarget++
     const firstFailure = block.firstFailureAge[p]
     if (Number.isNaN(firstFailure) || firstFailure > deathAge) {
-      survivedSucceeded++
+      if (reachesTargetAtDeath) survivedSucceeded++
     } else {
       // Fehlbeträge bis zum Sterbealter
-      const lastYear = Math.min(years - 1, deathAge - currentAge)
       let sum = 0
       let count = 0
-      for (let t = 0; t <= lastYear; t++) {
+      for (let t = 0; t <= lastAliveYear; t++) {
         const value = block.series.shortfallReal[p * years + t]
         if (value > 0) {
           sum += value
@@ -351,6 +369,11 @@ export function summarize(
     depletionHistogram: countBy(depletedAges),
     neverDepleted: paths - depletedAges.length,
     shortfall: shortfallStats(failedShortfalls, failureYearSum),
+    targetWealth: {
+      amount: target,
+      missedPaths: missedTarget,
+      mortalityMissedPaths: mortalityMissedTarget,
+    },
     mortalityWeighted: {
       successRate: mortalitySuccess,
       successStdError: Math.sqrt((mortalitySuccess * (1 - mortalitySuccess)) / paths),

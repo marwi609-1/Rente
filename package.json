@@ -1,6 +1,6 @@
 {
   "name": "ruhestandsplaner",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "private": true,
   "type": "module",
   "description": "Ruhestands-, FIRE- und Entnahmeplanung im deutschen Kontext (Single Page Application)",

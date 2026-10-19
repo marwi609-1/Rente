@@ -1,11 +1,12 @@
 import type { HeatmapResult } from '@/domain/engine/heatmap'
+import type { PwrSummary } from '@/domain/engine/pwr'
 import type { Histogram } from '@/domain/engine/histogram'
 import type { CapitalTaxDetail, MonteCarloSummary } from '@/domain/engine/summary'
 import type { YearResult } from '@/domain/engine/types'
 import type { RetirementPlan } from '@/domain/model/types'
 import { allocationPolicy } from '@/domain/strategy/allocation'
 import { formatCompact, formatEuro, formatPercent } from '@/utils/format'
-import type { HeatmapChartData, OverlayData } from './options'
+import type { HeatmapChartData, OverlayData, StartYearData } from './options'
 
 /**
  * Aufbereitung der Ergebnisse für die Diagramme: Auswahl real/nominal, Zuordnung der Reihen und
@@ -253,5 +254,20 @@ export function overlayData(
         }),
       }
     }),
+  }
+}
+
+/** PWR je historischem Startjahr mit dem geplanten Netto-Konsum als Vergleich; sonst `null`. */
+export function pwrStartYearData(result: PwrSummary): StartYearData | null {
+  if (!result.byStartYear || result.byStartYear.length === 0) return null
+  return {
+    labels: result.byStartYear.map((r) => String(r.year)),
+    values: result.byStartYear.map((r) => r.amount),
+    reference: result.plannedConsumption,
+    portfolioValue: result.portfolioValue,
+    cyclicFrom:
+      result.cyclicFromYear === null
+        ? null
+        : result.byStartYear.findIndex((r) => r.year === result.cyclicFromYear),
   }
 }

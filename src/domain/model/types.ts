@@ -90,6 +90,11 @@ export interface Spending {
   netConsumption: EUR
   /** Erfolgskriterium, heutige Kaufkraft */
   minimumAcceptableConsumption: EUR
+  /**
+   * Erfolgskriterium, heutige Kaufkraft: reales Vermögen, das am Horizont (sterblichkeitsgewichtet:
+   * am Ende des Sterbejahres) mindestens übrig sein muss; 0 = kein Ziel
+   */
+  targetWealth: EUR
   rule: WithdrawalRule
   /** lineare Interpolation, leer = Faktor 1 */
   ageProfile: AgeFactor[]

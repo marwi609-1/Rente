@@ -492,3 +492,108 @@ export function overlayLineOption(
     })),
   }
 }
+
+export interface StartYearData {
+  /** Startjahre */
+  labels: string[]
+  /** PWR je Startjahr, Euro von heute */
+  values: number[]
+  /** Netto-Konsum laut Plan */
+  reference: number
+  /** Bezugsgröße der Entnahmerate */
+  portfolioValue: number
+  /** Index des ersten Startjahres mit zyklisch fortgesetzter Folge; `null`, wenn keines */
+  cyclicFrom: number | null
+}
+
+/**
+ * Säulen je Startjahr; Jahre unter dem geplanten Netto-Konsum in der zweiten Farbe, der Plan als
+ * gestrichelte Linie.
+ */
+export function startYearBarOption(
+  data: StartYearData,
+  theme: ChartTheme,
+  layout: ChartLayout,
+): EChartsOption {
+  const base = baseOption(theme, layout)
+  const below = (v: number) => v < data.reference
+  const rate = (v: number) =>
+    data.portfolioValue > 0 ? ` (${formatPercent(v / data.portfolioValue, 1)})` : ''
+  return {
+    ...base,
+    tooltip: {
+      ...(base.tooltip as object),
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      formatter: (params: unknown) => {
+        const t = (params as { dataIndex: number }[])[0]?.dataIndex ?? 0
+        const v = data.values[t]
+        return [
+          tooltipHeader(`Startjahr ${data.labels[t]}`),
+          tooltipRow(theme.series[below(v) ? 1 : 0], 'PWR', `${formatEuro(v)}${rate(v)}`),
+          tooltipRow(null, 'Netto-Konsum laut Plan', formatEuro(data.reference)),
+        ].join('')
+      },
+    },
+    xAxis: {
+      type: 'category',
+      data: data.labels,
+      name: layout.compact ? undefined : 'Startjahr',
+      nameLocation: 'middle',
+      nameGap: 28,
+      nameTextStyle: { color: theme.muted },
+      axisLine: { lineStyle: { color: theme.axis } },
+      axisTick: { show: false },
+      axisLabel: { color: theme.muted, hideOverlap: true },
+    },
+    yAxis: valueAxis(theme, euroAxisLabel(layout)),
+    series: [
+      {
+        type: 'bar',
+        name: 'PWR ab Netto-Konsum',
+        stack: 'pwr',
+        data: data.values.map((v) => (below(v) ? null : v)),
+        barMaxWidth: 24,
+        itemStyle: { color: theme.series[0], borderRadius: [4, 4, 0, 0] },
+        markLine: {
+          symbol: 'none',
+          silent: true,
+          label: {
+            formatter: layout.compact ? '' : 'Plan',
+            color: theme.inkSecondary,
+            position: 'insideEndTop',
+          },
+          lineStyle: { color: theme.ink, type: 'dashed', width: 1 },
+          data: [{ yAxis: data.reference }],
+        },
+        markArea:
+          data.cyclicFrom === null
+            ? undefined
+            : {
+                silent: true,
+                itemStyle: { color: theme.grid, opacity: 0.6 },
+                label: {
+                  show: !layout.compact,
+                  formatter: 'zyklisch fortgesetzt',
+                  color: theme.muted,
+                  position: 'insideTop',
+                },
+                data: [
+                  [
+                    { xAxis: data.labels[data.cyclicFrom] },
+                    { xAxis: data.labels[data.labels.length - 1] },
+                  ],
+                ],
+              },
+      },
+      {
+        type: 'bar',
+        name: 'PWR unter Netto-Konsum',
+        stack: 'pwr',
+        data: data.values.map((v) => (below(v) ? v : null)),
+        barMaxWidth: 24,
+        itemStyle: { color: theme.series[1], borderRadius: [4, 4, 0, 0] },
+      },
+    ],
+  }
+}

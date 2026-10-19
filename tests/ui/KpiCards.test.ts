@@ -55,6 +55,23 @@ describe('KPI-Karten', () => {
     )
   })
 
+  it('nennt bei gesetztem Zielvermögen die verfehlenden Pfade', () => {
+    const fixture = {
+      ...run,
+      summary: {
+        ...run.summary,
+        targetWealth: { amount: 250_000, missedPaths: 12, mortalityMissedPaths: 7 },
+      },
+    }
+    const text = card(mountCards({}, fixture), 'success').text()
+    expect(text).toContain(formatEuro(250_000))
+    expect(text).toContain('12 Pfade')
+    expect(card(mountCards({ mortalityWeighted: true }, fixture), 'success').text()).toContain(
+      '7 Pfade',
+    )
+    expect(card(mountCards(), 'success').text()).not.toContain('Zielvermögen verfehlt')
+  })
+
   it('wechselt zur sterblichkeitsgewichteten Sicht', () => {
     const wrapper = mountCards({ mortalityWeighted: true })
     const { summary } = run

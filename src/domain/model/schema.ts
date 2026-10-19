@@ -107,6 +107,7 @@ const spendingSchema = z
   .object({
     netConsumption: eur,
     minimumAcceptableConsumption: eur,
+    targetWealth: eur.default(0),
     rule: withdrawalRuleSchema,
     ageProfile: z
       .array(z.object({ age, factor: z.number().min(0).max(5) }))

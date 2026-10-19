@@ -3,14 +3,15 @@ import { createReturnGenerator, createReturnPath } from '../market/generators'
 import type { RetirementPlan } from '../model/types'
 import type { EngineContext } from './context'
 import { createPathSimulator } from './path'
+import { meetsTargetWealth } from './target'
 import { simulationYears } from './timeline'
 
 /** Zahl erfolgreicher Pfade eines Pfadbereichs, ohne die Jahresreihen zu speichern. */
 export interface SuccessCount {
   paths: number
-  /** ohne Fehljahr bis zum Horizont */
+  /** ohne Fehljahr bis zum Horizont und mit Zielvermögen am Horizont */
   succeeded: number
-  /** ohne Fehljahr bis zum gezogenen Sterbealter */
+  /** ohne Fehljahr bis zum gezogenen Sterbealter und mit Zielvermögen am Ende des Sterbejahres */
   mortalitySucceeded: number
 }
 
@@ -36,15 +37,23 @@ export function countSuccess(
   const returns = createReturnPath(years)
   let succeeded = 0
   let mortalitySucceeded = 0
+  const target = plan.spending.targetWealth
   for (let p = start; p < end; p++) {
     generator.fill(p, returns)
+    const deathAge = longevity.deathAge(p)
     let firstFailureAge = Number.POSITIVE_INFINITY
+    let horizonWealth = 0
+    let deathWealth = 0
     simulate(returns, (row) => {
       if (row.shortfall > 0 && row.age < firstFailureAge) firstFailureAge = row.age
+      horizonWealth = row.total / row.inflationIndexEnd
+      if (row.age <= deathAge) deathWealth = horizonWealth
     })
     const survived = firstFailureAge === Number.POSITIVE_INFINITY
-    if (survived) succeeded++
-    if (survived || firstFailureAge > longevity.deathAge(p)) mortalitySucceeded++
+    if (survived && meetsTargetWealth(horizonWealth, target)) succeeded++
+    if ((survived || firstFailureAge > deathAge) && meetsTargetWealth(deathWealth, target)) {
+      mortalitySucceeded++
+    }
   }
   return { paths: end - start, succeeded, mortalitySucceeded }
 }

@@ -7,12 +7,19 @@ import {
   histogramData,
   incomeData,
   lifeMarkers,
+  pwrStartYearData,
   wealthFanData,
 } from '@/ui/charts/data'
-import { categoryBarOption, fanChartOption, stackedBarOption } from '@/ui/charts/options'
-import { fanTable } from '@/ui/charts/tables'
+import {
+  categoryBarOption,
+  fanChartOption,
+  stackedBarOption,
+  startYearBarOption,
+} from '@/ui/charts/options'
+import { fanTable, startYearTable } from '@/ui/charts/tables'
 import { chartTheme } from '@/ui/charts/theme'
-import { formatEuro } from '@/utils/format'
+import type { PwrSummary } from '@/domain/engine/pwr'
+import { formatEuro, formatPercent } from '@/utils/format'
 import { smallRun } from '../helpers/summary'
 
 const run = smallRun()
@@ -285,5 +292,47 @@ describe('Aufschlüsselung der Kapitalertragsteuer', () => {
     expect(
       incomeData(summary, true).series.find((s) => s.name === 'Kapitalertragsteuer')?.details,
     ).toBe(undefined)
+  })
+})
+
+describe('PWR je Startjahr', () => {
+  const result = {
+    paths: 3,
+    percentiles: [],
+    portfolioValue: 1_000_000,
+    targetWealth: 0,
+    plannedConsumption: 40_000,
+    histogram: { start: 0, step: 1, counts: [], overflow: 0 },
+    byStartYear: [
+      { year: 1968, amount: 45_000 },
+      { year: 1969, amount: 36_000 },
+      { year: 1970, amount: 52_000 },
+    ],
+    cyclicFromYear: 1970,
+  } as PwrSummary
+
+  it('liefert ohne Startjahre keine Diagrammdaten', () => {
+    expect(pwrStartYearData({ ...result, byStartYear: null })).toBeNull()
+  })
+
+  it('färbt Startjahre unter dem geplanten Konsum in der zweiten Reihe', () => {
+    const data = pwrStartYearData(result)!
+    expect(data.labels).toEqual(['1968', '1969', '1970'])
+    const option = startYearBarOption(data, theme, wide)
+    const series = option.series as { data: (number | null)[]; markLine?: unknown }[]
+    expect(series[0].data).toEqual([45_000, null, 52_000])
+    expect(series[1].data).toEqual([null, 36_000, null])
+    expect(pwrStartYearData(result)!.cyclicFrom).toBe(2)
+    expect(pwrStartYearData({ ...result, cyclicFromYear: null })!.cyclicFrom).toBeNull()
+    const tooltip = (option.tooltip as { formatter: Formatter }).formatter([{ dataIndex: 1 }])
+    expect(tooltip).toContain('Startjahr 1969')
+    expect(tooltip).toContain(formatEuro(36_000))
+    expect(tooltip).toContain(formatPercent(0.036, 1))
+  })
+
+  it('liefert dieselben Werte als Tabelle', () => {
+    const table = startYearTable(pwrStartYearData(result)!)
+    expect(table.rows[1]).toEqual(['1969', formatEuro(36_000), formatPercent(0.036, 1), 'nein'])
+    expect(table.rows[2][3]).toBe('ja')
   })
 })
