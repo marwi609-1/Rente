@@ -508,3 +508,21 @@ R = Σ_k w_k · (1 + μ_k) · (1 − TER_k) / (1 + π)
 
 Nominal: `V · (1 + π)^t`. Die Tests in `tests/domain/engine/closedForm.test.ts` prüfen beide Formeln
 mit einer Toleranz von 0,01 €.
+
+### Perfect Withdrawal Rate auf historischen Pfaden
+
+Ist die Portfoliorendite unabhängig von der Entnahme (ohne Steuern und KV, fixe Allokation mit
+jährlichem Rebalancing), hat die PWR eine geschlossene Form (Early Retirement Now, „The Ultimate
+Guide to Safe Withdrawal Rates – Part 8: Technical Appendix“, 2017, dort monatlich):
+
+```
+C_t = Π_{τ=t}^{T−1} R_τ,   R_τ = Σ_k w_k · (1 + r_{k,τ}) · (1 − TER_k) / (1 + π_τ)
+c   = (V_0 · C_0 + Σ_t p_t · C_t − Z) / Σ_{t im Ruhestand} f(a_t) · C_t
+```
+
+mit realen Zuflüssen `p_t` zu Jahresbeginn (Sparrate, steuerfreie Einkünfte, abzüglich
+Einmalausgaben), Ausgabenprofil `f` und Zielvermögen `Z`. `tests/domain/engine/ernClosedForm.test.ts`
+vergleicht sie auf allen 24 vollständigen 40-Jahres-Folgen der EUR-Daten (Startjahre 1963–1986) mit
+der iterativen PWR der Engine; die Abweichung liegt unter 0,001 €, die Testtoleranz bei 1 €. Mit
+Steuern, KV oder vermögensabhängiger Allokation gilt die Form nicht, die Engine rechnet dann
+iterativ.
