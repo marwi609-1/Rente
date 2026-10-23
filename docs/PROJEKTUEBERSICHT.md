@@ -1,6 +1,6 @@
 # Projektübersicht Ruhestandsplaner
 
-Stand: Version 1.08 (Oktober 2026), Rechtsstand Deutschland 2026.
+Stand: Version 1.09 (Oktober 2026), Rechtsstand Deutschland 2026.
 
 > Rechenwerkzeug – keine Anlage-, Steuer- oder Rentenberatung.
 
@@ -130,7 +130,7 @@ Umfang: rund 12.400 Zeilen Quellcode und 6.400 Zeilen Tests.
 | ---------------------------------- | ------------------------------------------------------------------------------------------------- |
 | [README.md](../README.md)          | Start, Skripte, Aufbau, Stand, Versionierung                                                      |
 | [MODEL.md](MODEL.md)               | Modell und Formeln: Jahresschritt, Steuern, KV, Langlebigkeit, Strategien, Suchen, PWR, Testanker |
-| [ASSUMPTIONS.md](ASSUMPTIONS.md)   | 91 dokumentierte Annahmen und Entscheidungen (A1–A91)                                             |
+| [ASSUMPTIONS.md](ASSUMPTIONS.md)   | 92 dokumentierte Annahmen und Entscheidungen (A1–A92)                                             |
 | [DATA_SOURCES.md](DATA_SOURCES.md) | Quellen, Stand, Prüfsummen und Nutzungsbedingungen aller Daten und gesetzlichen Werte             |
 
 Grundregel: Historische Daten, Sterbetafeln und gesetzliche Parameter werden nie geschätzt oder
@@ -147,6 +147,7 @@ erfunden. Sie stammen aus Primärquellen und sind mit Quelle dokumentiert.
 | 1.06     | PKV in der Rentenphase                                                                                                                                                                                           |
 | 1.07     | Historische Daten auf DM/Euro umgestellt (Akkumula, MSCI World, Bundesbank, Destatis)                                                                                                                            |
 | 1.08     | Zielvermögen als Erfolgskriterium, PWR je Startjahr; Prüfanker nach ERN                                                                                                                                          |
+| 1.09     | Sterbetafel als Default-Langlebigkeit, Hinweis zur Wirkung des Geschlechts                                                                                                                                       |
 
 ## Bekannte Grenzen
 

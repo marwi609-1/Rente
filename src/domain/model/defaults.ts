@@ -11,8 +11,8 @@ export function createDefaultPlan(startYear: number): RetirementPlan {
       sex: 'm',
       retirementAge: 57,
       planningHorizonAge: 95,
-      // Näherung für einen Mann des Jahrgangs 1974, Abgleich mit Destatis in docs/ASSUMPTIONS.md
-      longevity: { type: 'gompertz', modalAge: 88, dispersion: 10 },
+      // Destatis-Kohortensterbetafel nach Jahrgang und Geschlecht (A92)
+      longevity: { type: 'table' },
       childless: false,
       churchTaxRate: 0,
     },

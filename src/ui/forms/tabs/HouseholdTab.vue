@@ -123,10 +123,21 @@ const years = computed(() => {
           { title: 'männlich', value: 'm' },
           { title: 'weiblich', value: 'w' },
         ]"
-        help="Nur für die Sterbetafel: Frauen leben im Mittel einige Jahre länger."
+        help="Wirkt nur auf die sterblichkeitsgewichtete Sicht, und zwar über die Sterbetafel bzw. den daraus abgeleiteten Gompertz-Vorschlag: Frauen leben im Mittel einige Jahre länger. Die Erfolgsquote mit festem Horizont hängt nicht vom Geschlecht ab, weil jeder Pfad bis zum Planungshorizont gerechnet wird."
       />
     </v-col>
   </v-row>
+  <p
+    v-if="household.longevity.type !== 'table'"
+    class="text-body-2 text-medium-emphasis mb-4"
+    data-testid="sex-note"
+  >
+    {{
+      household.longevity.type === 'fixed'
+        ? 'Ohne Sterblichkeitsmodell wirkt das Geschlecht nicht auf das Ergebnis.'
+        : 'Mit eigenen Gompertz-Werten wirkt das Geschlecht nicht auf das Ergebnis; erst die Übernahme des Vorschlags unten passt Modalalter und Dispersion an Jahrgang und Geschlecht an.'
+    }}
+  </p>
   <p class="text-body-2 text-medium-emphasis mb-4" data-testid="timeline-info">
     Startjahr {{ household.startYear
     }}<template v-if="years"> · {{ years }} simulierte Jahre</template>
