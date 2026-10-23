@@ -13,6 +13,9 @@ function household(patch: Partial<Household> = {}): Household {
   return { ...createDefaultPlan(2026).household, ...patch }
 }
 
+/** Gompertz-Parameter des früheren Default-Szenarios (V1) */
+const GOMPERTZ = { type: 'gompertz', modalAge: 88, dispersion: 10 } as const
+
 function drawAges(h: Household, n: number, seed = 42) {
   const model = createLongevityModel(h, seed, mortalityDe)
   return Array.from({ length: n }, (_, p) => model.deathAge(p))
@@ -44,14 +47,14 @@ describe('Gompertz', () => {
   })
 
   it('das häufigste gezogene Sterbealter liegt beim Modalalter', () => {
-    const ages = drawAges(household(), 200_000)
+    const ages = drawAges(household({ longevity: GOMPERTZ }), 200_000)
     // ganzzahliges Alter im Todesjahr; das Dichtemaximum liegt bei m, der Jahresbucket also bei m − 1 oder m
     expect(Math.abs(mode(ages) - 88)).toBeLessThanOrEqual(1)
     expect(Math.min(...ages.slice(0, 1_000))).toBeGreaterThanOrEqual(52)
   })
 
   it('Anteil der Pfade, die ein Alter erleben, entspricht der Überlebenskurve', () => {
-    const h = household()
+    const h = household({ longevity: GOMPERTZ })
     const model = createLongevityModel(h, 42)
     const ages = drawAges(h, 100_000)
     for (const age of [70, 85, 95]) {

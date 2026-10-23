@@ -135,6 +135,11 @@ describe('Mindestkonsum', () => {
 describe('Langlebigkeit', () => {
   it('passt den Gompertz-Hinweis an Jahrgang und Geschlecht an und übernimmt die Werte', async () => {
     const { wrapper, store } = await open('haushalt')
+    // Default ist die Sterbetafel; dort wirkt das Geschlecht ohne Hinweis
+    expect(wrapper.find('[data-testid="sex-note"]').exists()).toBe(false)
+    store.plan.household.longevity = { type: 'gompertz', modalAge: 88, dispersion: 10 }
+    await flushPromises()
+    expect(wrapper.get('[data-testid="sex-note"]').text()).toContain('Übernahme des Vorschlags')
     await type(wrapper, 'household.currentAge', '53')
     const hint = () => wrapper.get('[data-testid="gompertz-fit"]').text()
     expect(hint()).toContain(`Jahrgang ${store.plan.household.startYear - 53} (männlich)`)

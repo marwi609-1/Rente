@@ -445,6 +445,15 @@ mit dem ersten Datenjahr fortgesetzt (A22); diese Startjahre sind grau hinterleg
 dort einen künstlichen Sprung vom Datenende zum Datenanfang enthält. Der Vergleichswert ist der
 Netto-Konsum laut Plan ohne Ausgabenprofil.
 
+**A92 – Sterbetafel als Default (Nutzerentscheidung 23.10.2026).** Das Default-Szenario und die
+Vorlagen nutzen die Destatis-Kohortensterbetafel statt Gompertz 88/10 (V1). Mit festen
+Gompertz-Werten wirkte das Geschlecht nicht auf das Ergebnis, was als Fehler wahrgenommen wurde;
+mit der Sterbetafel wirken Jahrgang und Geschlecht ohne weiteren Schritt. Gespeicherte Szenarien
+behalten ihr Modell. Das Geschlecht beeinflusst nur die sterblichkeitsgewichtete Sicht; die
+Erfolgsquote mit festem Horizont ist davon unabhängig. Die Eingabe weist darauf hin, wenn das
+gewählte Modell das Geschlecht nicht berücksichtigt. Die Tafel deckt die Jahrgänge 1926–2008 ab;
+außerhalb meldet die Rechnung einen Fehler.
+
 **A73 – Rechenaufwand.** Sichere Entnahme und FIRE-Status laufen nach jedem Hauptlauf automatisch im
 Hintergrund und werden mit der nächsten Eingabe abgebrochen; Heatmap und PWR nur auf Knopfdruck.
 Eine Eingabeänderung bricht sie ab, fertige Ergebnisse bleiben als veraltet markiert sichtbar.
@@ -565,7 +574,7 @@ Erfolgsquote daher 0 oder 1.
 
 ## Geprüfte Annahmen der Spezifikation
 
-**V1 – Gompertz-Parameter des Default-Szenarios** (Modalalter 88, Dispersion 10). Angepasst an die
+**V1 – Gompertz-Parameter des Default-Szenarios** (Modalalter 88, Dispersion 10; seit Version 1.09 ist die Sterbetafel Default, A92). Angepasst an die
 bedingte Überlebenskurve ab 52 Jahren des Jahrgangs 1974 (Destatis-Kohortensterbetafeln, Alter
 53–95, Kleinste Quadrate auf log S):
 

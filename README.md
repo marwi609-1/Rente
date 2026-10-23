@@ -55,13 +55,13 @@ npm run dev
   auf Knopfdruck (Heatmap, PWR), Szenarien; Orchestrierung, keine Rechenlogik
 - `src/persistence/` Szenarien in IndexedDB (`idb`)
 - `src/ui/` Ansichten und Komponenten (Vue 3, Vuetify 3)
-  - `views/` Dashboard, Eingaben (9 Tabs), Monte Carlo, Heatmap, Szenarien, Annahmen
+  - `views/` Dashboard, Eingaben (10 Tabs), Monte Carlo, Heatmap, Szenarien, Annahmen
   - `forms/` Eingabefelder mit Einheit, Hilfetext und zod-Meldungen am Feld
   - `dashboard/` KPI-Karten
   - `charts/` ECharts (nur benötigte Module), Optionen je Diagramm, Tabellenansicht
   - `assumptions/` Rechtsstand und Darstellung der Dokumentation
 - `tests/` spiegelt `src/domain`, dazu Komponententests unter `tests/ui`
-- `docs/` [Modell und Formeln](docs/MODEL.md), [Annahmen](docs/ASSUMPTIONS.md),
+- `docs/` [Projektübersicht](docs/PROJEKTUEBERSICHT.md), [Modell und Formeln](docs/MODEL.md), [Annahmen](docs/ASSUMPTIONS.md),
   [Datenquellen](docs/DATA_SOURCES.md)
 
 ## Stand
